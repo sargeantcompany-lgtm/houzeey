@@ -1,0 +1,314 @@
+.sell-page {
+  background: #f6f8f6;
+  min-height: 100vh;
+  padding: 48px 24px;
+}
+
+.sell-card {
+  background: #fff;
+  border-radius: 18px;
+  padding: 48px;
+  max-width: 720px;
+  margin: 0 auto;
+  border: 1px solid #eee;
+}
+
+.sell-card h1 {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #1a1a1a;
+  margin: 0 0 32px;
+}
+
+/* Progress */
+.sell-progress {
+  display: flex;
+  gap: 0;
+  margin-bottom: 40px;
+  position: relative;
+}
+
+.sell-progress::before {
+  content: '';
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  right: 14px;
+  height: 2px;
+  background: #e0e0e0;
+  z-index: 0;
+}
+
+.progress-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  position: relative;
+  z-index: 1;
+}
+
+.progress-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #e0e0e0;
+  color: #888;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  transition: all 0.2s;
+}
+
+.progress-step.active .progress-dot {
+  background: #3bb54a;
+  color: #fff;
+}
+
+.progress-step.done .progress-dot {
+  background: #3bb54a;
+  color: #fff;
+}
+
+.progress-step span {
+  font-size: 0.75rem;
+  color: #aaa;
+  font-weight: 500;
+  text-align: center;
+}
+
+.progress-step.active span {
+  color: #3bb54a;
+  font-weight: 700;
+}
+
+/* Form */
+.sell-step {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.field-row {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.field-row label {
+  flex: 1;
+  min-width: 120px;
+}
+
+.sell-step label,
+.sell-step .full {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.sell-step input,
+.sell-step select,
+.sell-step textarea {
+  padding: 11px 13px;
+  border: 1.5px solid #e0e0e0;
+  border-radius: 10px;
+  font-size: 0.92rem;
+  outline: none;
+  background: #fff;
+  font-family: inherit;
+  transition: border-color 0.15s;
+}
+
+.sell-step input:focus,
+.sell-step select:focus,
+.sell-step textarea:focus {
+  border-color: #3bb54a;
+}
+
+.sell-step textarea {
+  resize: vertical;
+}
+
+/* Upload divider */
+.upload-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #aaa;
+  font-size: 0.82rem;
+}
+
+.upload-divider::before,
+.upload-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #e0e0e0;
+}
+
+/* File upload label */
+.file-upload-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  border: 1.5px dashed #b2deba;
+  border-radius: 10px;
+  background: #f8fdf9;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #3bb54a;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.file-upload-label:hover {
+  background: #eaf7ec;
+  border-color: #3bb54a;
+}
+
+.file-input-hidden {
+  display: none;
+}
+
+/* Media count badge */
+.media-count {
+  padding: 10px 16px;
+  background: #eaf7ec;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #3bb54a;
+}
+
+/* Legacy upload (kept for reference) */
+.btn-upload {
+  padding: 10px 24px;
+  background: #3bb54a;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.upload-tip {
+  font-size: 0.83rem;
+  color: #888;
+  font-style: italic;
+  margin: 0;
+}
+
+/* Price preview */
+.price-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+  background: #f2fbf4;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.price-preview strong {
+  color: #3bb54a;
+  font-size: 1.1rem;
+}
+
+/* Review */
+.review-step h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 0 0 16px;
+}
+
+.review-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.review-item {
+  display: flex;
+  gap: 16px;
+  font-size: 0.9rem;
+  padding: 10px 14px;
+  background: #f8f8f8;
+  border-radius: 8px;
+}
+
+.review-item span {
+  color: #888;
+  min-width: 90px;
+}
+
+.review-item strong {
+  color: #1a1a1a;
+}
+
+.review-note {
+  font-size: 0.82rem;
+  color: #aaa;
+  margin: 0;
+}
+
+/* Actions */
+.sell-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.btn-back {
+  padding: 12px 24px;
+  border: 1.5px solid #ddd;
+  border-radius: 10px;
+  background: #fff;
+  color: #555;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.btn-back:hover {
+  border-color: #999;
+}
+
+.btn-next {
+  padding: 12px 32px;
+  background: #3bb54a;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-next:hover {
+  background: #2fa040;
+}
+
+@media (max-width: 600px) {
+  .sell-card {
+    padding: 28px 20px;
+  }
+
+  .field-row {
+    flex-direction: column;
+  }
+}

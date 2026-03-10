@@ -1,0 +1,153 @@
+.marketplace-page {
+  background: #f6f8f6;
+  min-height: 100vh;
+}
+
+.mp-header {
+  background: #3bb54a;
+  padding: 40px 24px;
+  color: #fff;
+}
+
+.mp-header h1 {
+  font-size: 1.8rem;
+  font-weight: 800;
+  margin: 0 0 8px;
+}
+
+.mp-header p {
+  color: rgba(255,255,255,0.8);
+  margin: 0 0 20px;
+  font-size: 0.95rem;
+}
+
+.btn-sell-item {
+  display: inline-block;
+  padding: 10px 22px;
+  background: #fff;
+  color: #3bb54a;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+
+.btn-sell-item:hover {
+  background: #f2fbf4;
+}
+
+.mp-body {
+  padding-top: 32px;
+  padding-bottom: 60px;
+}
+
+.mp-categories {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 28px;
+}
+
+.cat-btn {
+  padding: 7px 18px;
+  border: 1.5px solid #ddd;
+  border-radius: 20px;
+  background: #fff;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: #555;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.cat-btn:hover,
+.cat-btn.active {
+  border-color: #3bb54a;
+  background: #eaf7ec;
+  color: #3bb54a;
+  font-weight: 600;
+}
+
+.mp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 20px;
+}
+
+.mp-card {
+  background: #fff;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid #eee;
+  transition: box-shadow 0.2s;
+}
+
+.mp-card:hover {
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+}
+
+.mp-img {
+  position: relative;
+  height: 180px;
+  overflow: hidden;
+}
+
+.mp-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mp-condition {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 10px;
+}
+
+.mp-info {
+  padding: 14px;
+}
+
+.mp-price {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #3bb54a;
+  margin-bottom: 4px;
+}
+
+.mp-info h3 {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 0 0 5px;
+}
+
+.mp-suburb {
+  font-size: 0.8rem;
+  color: #888;
+  margin: 0 0 12px;
+}
+
+.btn-mp-contact {
+  width: 100%;
+  padding: 9px;
+  background: #eaf7ec;
+  color: #3bb54a;
+  border: 1px solid #b2deba;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-mp-contact:hover {
+  background: #c2eacb;
+}
