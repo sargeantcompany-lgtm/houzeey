@@ -1,32 +1,32 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import logo from '../assets/logo.jpg'
+import { register } from '../auth'
 import './Auth.css'
 
 const ROLES = [
-  { value: 'buyer', label: 'Buyer' },
-  { value: 'seller', label: 'Seller' },
-  { value: 'landlord', label: 'Landlord' },
-  { value: 'tenant', label: 'Tenant' },
+  { value: 'buyer', label: 'Buyer — looking to purchase' },
+  { value: 'renter', label: 'Renter — looking to rent' },
+  { value: 'seller', label: 'Seller — listing my property for sale' },
+  { value: 'landlord', label: 'Landlord — listing a rental' },
 ]
 
 export default function Register() {
-  const [form, setForm] = useState({
-    name: '',
-    email: '',
-    password: '',
-    confirm: '',
-    role: 'buyer',
-  })
+  const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '', role: 'buyer' })
+  const [error, setError] = useState('')
   const navigate = useNavigate()
 
   function handleChange(e) {
+    setError('')
     setForm(f => ({ ...f, [e.target.name]: e.target.value }))
   }
 
   function handleSubmit(e) {
     e.preventDefault()
-    // TODO: wire up auth
+    if (form.password.length < 8) { setError('Password must be at least 8 characters.'); return }
+    if (form.password !== form.confirm) { setError('Passwords do not match.'); return }
+    const result = register(form)
+    if (!result.ok) { setError(result.error); return }
     navigate('/dashboard')
   }
 
@@ -40,27 +40,14 @@ export default function Register() {
         <p className="auth-sub">Start buying, selling or renting — fee free</p>
 
         <form onSubmit={handleSubmit} className="auth-form">
+          {error && <p className="auth-error">{error}</p>}
           <label>
             Full name
-            <input
-              type="text"
-              name="name"
-              value={form.name}
-              onChange={handleChange}
-              placeholder="Jane Smith"
-              required
-            />
+            <input type="text" name="name" value={form.name} onChange={handleChange} placeholder="Jane Smith" required />
           </label>
           <label>
             Email
-            <input
-              type="email"
-              name="email"
-              value={form.email}
-              onChange={handleChange}
-              placeholder="you@example.com"
-              required
-            />
+            <input type="email" name="email" value={form.email} onChange={handleChange} placeholder="you@example.com" required />
           </label>
           <label>
             I am a...
@@ -70,25 +57,11 @@ export default function Register() {
           </label>
           <label>
             Password
-            <input
-              type="password"
-              name="password"
-              value={form.password}
-              onChange={handleChange}
-              placeholder="Min 8 characters"
-              required
-            />
+            <input type="password" name="password" value={form.password} onChange={handleChange} placeholder="Min 8 characters" required />
           </label>
           <label>
             Confirm password
-            <input
-              type="password"
-              name="confirm"
-              value={form.confirm}
-              onChange={handleChange}
-              placeholder="••••••••"
-              required
-            />
+            <input type="password" name="confirm" value={form.confirm} onChange={handleChange} placeholder="••••••••" required />
           </label>
           <button type="submit" className="auth-submit">Create Account</button>
         </form>

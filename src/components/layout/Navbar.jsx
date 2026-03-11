@@ -1,13 +1,20 @@
 import { useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import logo from '../../assets/logo.jpg'
+import { getSession, logout } from '../../auth'
 import './Navbar.css'
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
   const navigate = useNavigate()
+  const session = getSession()
 
   const navLinkClass = ({ isActive }) => isActive ? 'nav-link active' : 'nav-link'
+
+  function handleLogout() {
+    logout()
+    navigate('/')
+  }
 
   return (
     <header className="navbar">
@@ -22,11 +29,24 @@ export default function Navbar() {
           <NavLink to="/sell" className={navLinkClass} onClick={() => setMenuOpen(false)}>Sell</NavLink>
           <NavLink to="/marketplace" className={navLinkClass} onClick={() => setMenuOpen(false)}>Marketplace</NavLink>
           <NavLink to="/messages" className={navLinkClass} onClick={() => setMenuOpen(false)}>Messages</NavLink>
+          {session && (
+            <NavLink to="/payments" className={navLinkClass} onClick={() => setMenuOpen(false)}>Payments</NavLink>
+          )}
         </nav>
 
         <div className="navbar-actions">
-          <button className="btn-outline" onClick={() => navigate('/login')}>Log in</button>
-          <button className="btn-primary" onClick={() => navigate('/register')}>Sign up</button>
+          {session ? (
+            <>
+              <span className="nav-user">Hi, {session.name.split(' ')[0]}</span>
+              <button className="btn-outline" onClick={() => navigate('/dashboard')}>Dashboard</button>
+              <button className="btn-primary" onClick={handleLogout}>Log out</button>
+            </>
+          ) : (
+            <>
+              <button className="btn-outline" onClick={() => navigate('/login')}>Log in</button>
+              <button className="btn-primary" onClick={() => navigate('/register')}>Sign up</button>
+            </>
+          )}
         </div>
 
         <button

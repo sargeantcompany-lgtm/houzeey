@@ -1,0 +1,496 @@
+.payments-page {
+  background: var(--bg);
+  min-height: 100vh;
+  padding: 40px 0 80px;
+}
+
+.payments-inner {
+  max-width: 860px;
+}
+
+.payments-head {
+  margin-bottom: 36px;
+}
+
+.payments-head h1 {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  margin: 0 0 6px;
+}
+
+.payments-head p {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+/* Section */
+.pay-section {
+  margin-bottom: 40px;
+}
+
+.pay-section h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 16px;
+}
+
+/* Lease cards */
+.lease-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.lease-card {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 22px 24px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--transition);
+}
+
+.lease-card:hover {
+  box-shadow: var(--shadow);
+}
+
+.lease-card.due {
+  border-color: #fca5a5;
+  background: #fffbfb;
+}
+
+.lease-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.lease-property {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.lease-landlord {
+  font-size: 0.83rem;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.lease-due {
+  font-size: 0.83rem;
+  color: var(--text-secondary);
+}
+
+.lease-card.due .lease-due {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.lease-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.lease-amount {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.lease-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.lease-badge.due {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.lease-badge.upcoming {
+  background: var(--green-light);
+  color: var(--green-dark);
+}
+
+.btn-pay-now {
+  padding: 9px 22px;
+  background: var(--green);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background var(--transition), box-shadow var(--transition), transform var(--transition);
+  box-shadow: 0 2px 8px rgba(59,181,74,0.25);
+}
+
+.btn-pay-now:hover {
+  background: var(--green-dark);
+  box-shadow: 0 4px 14px rgba(59,181,74,0.35);
+}
+
+.btn-pay-now:active {
+  transform: scale(0.97);
+}
+
+/* History table */
+.history-table {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.history-head {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1.2fr;
+  gap: 12px;
+  padding: 12px 20px;
+  background: #f9fafb;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+}
+
+.history-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1.2fr;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  align-items: center;
+  transition: background var(--transition);
+}
+
+.history-row:last-child {
+  border-bottom: none;
+}
+
+.history-row:hover {
+  background: #f9fafb;
+}
+
+.history-prop {
+  color: var(--text-primary);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-amount {
+  font-weight: 700;
+  color: var(--green);
+}
+
+.btn-receipt {
+  padding: 4px 12px;
+  background: var(--green-light);
+  color: var(--green-dark);
+  border: 1px solid var(--green-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition);
+  white-space: nowrap;
+}
+
+.btn-receipt:hover {
+  background: #d1f0d8;
+}
+
+/* Card payment form */
+.card-form-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 36px;
+  max-width: 520px;
+  margin: 0 auto 40px;
+  box-shadow: var(--shadow-lg);
+}
+
+.card-form-header {
+  margin-bottom: 28px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.card-form-header h3 {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0 0 6px;
+  letter-spacing: -0.02em;
+}
+
+.card-form-prop {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0 0 12px;
+}
+
+.card-form-amount {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.03em;
+}
+
+.card-form-amount span {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-left: 4px;
+}
+
+.card-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.card-brand-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.card-brand {
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  border: 1px solid var(--border);
+}
+
+.card-brand.visa { color: #1a1f71; background: #f0f2ff; }
+.card-brand.mc { color: #eb001b; background: #fff5f5; }
+.card-brand.amex { color: #007bc1; background: #f0f8ff; }
+
+.secure-badge {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: var(--green-dark);
+  font-weight: 600;
+}
+
+.field-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.field-wrap label {
+  font-size: 0.83rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.field-wrap input {
+  padding: 12px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+  outline: none;
+  font-family: var(--font);
+  color: var(--text-primary);
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.field-wrap input:focus {
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px rgba(59,181,74,0.1);
+}
+
+.field-err {
+  font-size: 0.78rem;
+  color: #dc2626;
+  font-weight: 500;
+}
+
+.field-row-two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.card-form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.btn-cancel {
+  flex: 1;
+  padding: 13px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition);
+}
+
+.btn-cancel:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.btn-pay {
+  flex: 2;
+  padding: 13px;
+  background: var(--green);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background var(--transition), box-shadow var(--transition), transform var(--transition);
+  box-shadow: 0 2px 8px rgba(59,181,74,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-pay:hover:not(:disabled) {
+  background: var(--green-dark);
+  box-shadow: 0 4px 16px rgba(59,181,74,0.4);
+}
+
+.btn-pay:disabled {
+  opacity: 0.8;
+  cursor: not-allowed;
+}
+
+.btn-pay:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2.5px solid rgba(255,255,255,0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+.card-form-note {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  text-align: center;
+  margin: 16px 0 0;
+  line-height: 1.5;
+}
+
+/* Success */
+.pay-success {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 48px 36px;
+  text-align: center;
+  max-width: 480px;
+  margin: 0 auto 40px;
+  box-shadow: var(--shadow-lg);
+}
+
+.pay-success-icon {
+  width: 64px;
+  height: 64px;
+  background: var(--green);
+  color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  margin: 0 auto 20px;
+  box-shadow: 0 4px 20px rgba(59,181,74,0.35);
+}
+
+.pay-success h2 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0 0 10px;
+}
+
+.pay-success p {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  margin: 0 0 20px;
+  line-height: 1.6;
+}
+
+.pay-receipt-id {
+  display: inline-block;
+  background: var(--green-light);
+  color: var(--green-dark);
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 8px 18px;
+  border-radius: 999px;
+  margin-bottom: 24px;
+  font-family: monospace;
+  letter-spacing: 0.05em;
+}
+
+@media (max-width: 640px) {
+  .history-head,
+  .history-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .history-head span:nth-child(2),
+  .history-head span:nth-child(3),
+  .history-row span:nth-child(2),
+  .history-row span:nth-child(3) {
+    display: none;
+  }
+
+  .lease-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .lease-right {
+    align-items: flex-start;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+}

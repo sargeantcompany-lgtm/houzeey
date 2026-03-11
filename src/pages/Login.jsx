@@ -1,20 +1,27 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import logo from '../assets/logo.jpg'
+import { login } from '../auth'
 import './Auth.css'
 
 export default function Login() {
   const [form, setForm] = useState({ email: '', password: '' })
+  const [error, setError] = useState('')
   const navigate = useNavigate()
+  const location = useLocation()
+  const from = location.state?.from?.pathname || '/dashboard'
+  const loginRequired = location.state?.reason === 'login_required'
 
   function handleChange(e) {
+    setError('')
     setForm(f => ({ ...f, [e.target.name]: e.target.value }))
   }
 
   function handleSubmit(e) {
     e.preventDefault()
-    // TODO: wire up auth
-    navigate('/dashboard')
+    const result = login(form)
+    if (!result.ok) { setError(result.error); return }
+    navigate(from, { replace: true })
   }
 
   return (
@@ -24,9 +31,13 @@ export default function Login() {
           <img src={logo} alt="Houzeey" className="auth-logo-img" />
         </Link>
         <h1>Welcome back</h1>
-        <p className="auth-sub">Log in to your account</p>
+        {loginRequired
+          ? <p className="auth-notice">Please log in to access that page.</p>
+          : <p className="auth-sub">Log in to your account</p>
+        }
 
         <form onSubmit={handleSubmit} className="auth-form">
+          {error && <p className="auth-error">{error}</p>}
           <label>
             Email
             <input

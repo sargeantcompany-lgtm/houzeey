@@ -1,24 +1,25 @@
 .dashboard-page {
-  background: #f6f8f6;
-  padding: 40px 24px 60px;
+  background: var(--bg);
+  padding: 36px 24px 80px;
   min-height: 100vh;
 }
 
 .dashboard-grid {
   display: grid;
   grid-template-columns: 240px 1fr;
-  gap: 32px;
+  gap: 28px;
   align-items: start;
 }
 
 /* Sidebar */
 .dash-sidebar {
-  background: #fff;
-  border-radius: 14px;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
   padding: 24px;
-  border: 1px solid #eee;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
   position: sticky;
-  top: 96px;
+  top: 84px;
 }
 
 .dash-profile {
@@ -27,13 +28,13 @@
   gap: 12px;
   margin-bottom: 24px;
   padding-bottom: 20px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border);
 }
 
 .dash-avatar {
   width: 48px;
   height: 48px;
-  background: #3bb54a;
+  background: var(--green);
   color: #fff;
   border-radius: 50%;
   display: flex;
@@ -47,7 +48,7 @@
 .dash-name {
   font-size: 0.92rem;
   font-weight: 700;
-  color: #1a1a1a;
+  color: var(--text-primary);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -56,17 +57,17 @@
 
 .dash-role {
   font-size: 0.8rem;
-  color: #888;
+  color: var(--text-muted);
   margin-top: 2px;
 }
 
 .verified-badge {
-  background: #eaf7ec;
-  color: #3bb54a;
+  background: var(--green-light);
+  color: var(--green-dark);
   font-size: 0.72rem;
   font-weight: 700;
-  padding: 2px 7px;
-  border-radius: 10px;
+  padding: 2px 8px;
+  border-radius: 999px;
 }
 
 .dash-nav {
@@ -78,18 +79,18 @@
 .dash-nav-item {
   display: block;
   padding: 9px 12px;
-  border-radius: 8px;
-  font-size: 0.9rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.88rem;
   font-weight: 500;
-  color: #555;
+  color: var(--text-secondary);
   text-decoration: none;
-  transition: background 0.15s, color 0.15s;
+  transition: background var(--transition), color var(--transition);
 }
 
 .dash-nav-item:hover,
 .dash-nav-item.active {
-  background: #eaf7ec;
-  color: #3bb54a;
+  background: var(--green-light);
+  color: var(--green);
   font-weight: 600;
 }
 
@@ -97,14 +98,15 @@
 .dash-main {
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 24px;
 }
 
 .dash-main h2 {
-  font-size: 1.2rem;
+  font-size: 1.15rem;
   font-weight: 700;
-  color: #1a1a1a;
+  color: var(--text-primary);
   margin: 0 0 16px;
+  letter-spacing: -0.01em;
 }
 
 /* Stats */
@@ -115,32 +117,35 @@
 }
 
 .dash-stat {
-  background: #fff;
-  border-radius: 12px;
+  background: var(--surface);
+  border-radius: var(--radius);
   padding: 20px;
-  border: 1px solid #eee;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
 .dash-stat-val {
-  font-size: 1.8rem;
+  font-size: 1.9rem;
   font-weight: 800;
-  color: #3bb54a;
+  color: var(--green);
+  letter-spacing: -0.02em;
 }
 
 .dash-stat span:last-child {
-  font-size: 0.82rem;
-  color: #888;
+  font-size: 0.8rem;
+  color: var(--text-muted);
 }
 
 /* Section */
 .dash-section {
-  background: #fff;
-  border-radius: 14px;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
   padding: 28px;
-  border: 1px solid #eee;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
 }
 
 .section-head {
@@ -155,45 +160,46 @@
 }
 
 .dash-sub {
-  font-size: 0.85rem;
-  color: #888;
+  font-size: 0.83rem;
+  color: var(--text-muted);
 }
 
 .btn-sm-primary {
   padding: 7px 16px;
-  background: #3bb54a;
+  background: var(--green);
   color: #fff;
-  border-radius: 8px;
-  font-size: 0.85rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.83rem;
   font-weight: 700;
   text-decoration: none;
-  transition: background 0.15s;
+  transition: background var(--transition), box-shadow var(--transition);
 }
 
 .btn-sm-primary:hover {
-  background: #2fa040;
+  background: var(--green-dark);
+  box-shadow: 0 2px 8px rgba(59,181,74,0.3);
 }
 
 .btn-sm-outline {
   padding: 7px 16px;
-  border: 1.5px solid #3bb54a;
-  color: #3bb54a;
-  border-radius: 8px;
-  font-size: 0.85rem;
+  border: 1.5px solid var(--green);
+  color: var(--green);
+  border-radius: var(--radius-sm);
+  font-size: 0.83rem;
   font-weight: 600;
   text-decoration: none;
-  transition: background 0.15s;
+  transition: background var(--transition);
 }
 
 .btn-sm-outline:hover {
-  background: #f2fbf4;
+  background: var(--green-light);
 }
 
 /* Listings table */
 .listings-table {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .listing-row {
@@ -201,9 +207,14 @@
   align-items: center;
   gap: 16px;
   padding: 14px;
-  border: 1px solid #f0f0f0;
-  border-radius: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
   background: #fafafa;
+  transition: background var(--transition);
+}
+
+.listing-row:hover {
+  background: #f3f4f6;
 }
 
 .listing-row-info {
@@ -215,15 +226,15 @@
 
 .listing-badge {
   padding: 4px 10px;
-  border-radius: 20px;
-  font-size: 0.75rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
   font-weight: 700;
   white-space: nowrap;
 }
 
 .listing-badge.sale {
-  background: #eaf7ec;
-  color: #3bb54a;
+  background: var(--green-light);
+  color: var(--green-dark);
 }
 
 .listing-badge.rent {
@@ -234,32 +245,32 @@
 .listing-row-title {
   font-size: 0.9rem;
   font-weight: 700;
-  color: #1a1a1a;
+  color: var(--text-primary);
 }
 
 .listing-row-sub {
-  font-size: 0.8rem;
-  color: #888;
+  font-size: 0.78rem;
+  color: var(--text-muted);
 }
 
 .listing-row-meta {
   display: flex;
   gap: 14px;
-  font-size: 0.82rem;
-  color: #666;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
   flex-wrap: wrap;
 }
 
 .row-status {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  padding: 3px 9px;
-  border-radius: 10px;
+  padding: 3px 10px;
+  border-radius: 999px;
 }
 
 .row-status.active {
-  background: #eaf7ec;
-  color: #3bb54a;
+  background: var(--green-light);
+  color: var(--green-dark);
 }
 
 /* Payments */
@@ -274,20 +285,20 @@
   align-items: center;
   gap: 16px;
   padding: 14px;
-  border: 1px solid #f0f0f0;
-  border-radius: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
   background: #fafafa;
 }
 
 .payment-from {
   font-size: 0.9rem;
   font-weight: 600;
-  color: #1a1a1a;
+  color: var(--text-primary);
 }
 
 .payment-date {
-  font-size: 0.8rem;
-  color: #888;
+  font-size: 0.78rem;
+  color: var(--text-muted);
   margin-top: 2px;
 }
 
@@ -295,19 +306,19 @@
   margin-left: auto;
   font-size: 1rem;
   font-weight: 800;
-  color: #3bb54a;
+  color: var(--green);
 }
 
 .payment-status {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  padding: 3px 9px;
-  border-radius: 10px;
+  padding: 3px 10px;
+  border-radius: 999px;
 }
 
 .payment-status.paid {
-  background: #eaf7ec;
-  color: #3bb54a;
+  background: var(--green-light);
+  color: var(--green-dark);
 }
 
 .payment-status.pending {

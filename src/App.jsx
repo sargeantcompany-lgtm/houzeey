@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Layout from './components/layout/Layout'
+import ProtectedRoute from './components/ProtectedRoute'
 import Home from './pages/Home'
 import Login from './pages/Login'
 import Register from './pages/Register'
@@ -9,6 +10,7 @@ import Dashboard from './pages/Dashboard'
 import Messages from './pages/Messages'
 import Sell from './pages/Sell'
 import Marketplace from './pages/Marketplace'
+import Payments from './pages/Payments'
 import NotFound from './pages/NotFound'
 
 export default function App() {
@@ -16,14 +18,19 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route element={<Layout />}>
+          {/* Public routes */}
           <Route path="/" element={<Home />} />
           <Route path="/buy" element={<Listings mode="sale" />} />
           <Route path="/rent" element={<Listings mode="rent" />} />
           <Route path="/listing/:id" element={<ListingDetail />} />
-          <Route path="/sell" element={<Sell />} />
           <Route path="/marketplace" element={<Marketplace />} />
-          <Route path="/messages" element={<Messages />} />
-          <Route path="/dashboard" element={<Dashboard />} />
+
+          {/* Protected routes — require login */}
+          <Route path="/sell" element={<ProtectedRoute><Sell /></ProtectedRoute>} />
+          <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/payments" element={<ProtectedRoute><Payments /></ProtectedRoute>} />
+
           <Route path="*" element={<NotFound />} />
         </Route>
         {/* Auth pages outside layout */}

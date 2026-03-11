@@ -6,4 +6,11 @@
 
 .main-content {
   flex: 1;
+  background: var(--bg);
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom));
+  }
 }

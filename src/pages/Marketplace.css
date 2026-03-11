@@ -1,78 +1,127 @@
-.marketplace-page {
+.mp-page {
   background: #f6f8f6;
   min-height: 100vh;
 }
 
 .mp-header {
   background: #3bb54a;
-  padding: 40px 24px;
+  padding: 36px 24px;
   color: #fff;
+}
+
+.mp-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
 }
 
 .mp-header h1 {
   font-size: 1.8rem;
   font-weight: 800;
-  margin: 0 0 8px;
+  margin: 0 0 4px;
 }
 
 .mp-header p {
-  color: rgba(255,255,255,0.8);
-  margin: 0 0 20px;
+  color: rgba(255,255,255,0.85);
+  margin: 0;
   font-size: 0.95rem;
 }
 
-.btn-sell-item {
-  display: inline-block;
-  padding: 10px 22px;
-  background: #fff;
-  color: #3bb54a;
-  border-radius: 8px;
-  font-weight: 700;
-  font-size: 0.9rem;
-  text-decoration: none;
-  transition: background 0.15s;
+.view-toggle {
+  display: flex;
+  background: rgba(255,255,255,0.2);
+  border-radius: 10px;
+  padding: 4px;
+  gap: 4px;
 }
 
-.btn-sell-item:hover {
-  background: #f2fbf4;
+.view-toggle button {
+  padding: 8px 18px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: rgba(255,255,255,0.85);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.view-toggle button.active {
+  background: #fff;
+  color: #3bb54a;
 }
 
 .mp-body {
-  padding-top: 32px;
+  padding-top: 28px;
   padding-bottom: 60px;
 }
 
-.mp-categories {
+/* Filters */
+.mp-filters {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 10px;
   flex-wrap: wrap;
   margin-bottom: 28px;
 }
 
-.cat-btn {
-  padding: 7px 18px;
+.filter-pill-group {
+  display: flex;
+  gap: 6px;
+}
+
+.pill {
+  padding: 7px 16px;
   border: 1.5px solid #ddd;
   border-radius: 20px;
   background: #fff;
-  font-size: 0.88rem;
-  font-weight: 500;
+  font-size: 0.85rem;
+  font-weight: 600;
   color: #555;
   cursor: pointer;
   transition: all 0.15s;
 }
 
-.cat-btn:hover,
-.cat-btn.active {
+.pill:hover,
+.pill.active {
   border-color: #3bb54a;
   background: #eaf7ec;
   color: #3bb54a;
-  font-weight: 600;
 }
 
+.mp-filters select {
+  padding: 8px 12px;
+  border: 1.5px solid #ddd;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 0.88rem;
+  outline: none;
+  cursor: pointer;
+}
+
+.saved-count {
+  margin-left: auto;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #e05252;
+}
+
+/* Grid */
 .mp-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 22px;
+}
+
+.no-results {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 60px 24px;
+  color: #999;
+  font-size: 0.95rem;
 }
 
 .mp-card {
@@ -80,40 +129,67 @@
   border-radius: 14px;
   overflow: hidden;
   border: 1px solid #eee;
-  transition: box-shadow 0.2s;
+  transition: box-shadow 0.2s, transform 0.15s;
 }
 
 .mp-card:hover {
-  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  box-shadow: 0 6px 24px rgba(0,0,0,0.1);
+  transform: translateY(-2px);
 }
 
-.mp-img {
+.mp-card-img {
   position: relative;
-  height: 180px;
+  display: block;
+  height: 200px;
   overflow: hidden;
 }
 
-.mp-img img {
+.mp-card-img img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform 0.3s;
 }
 
-.mp-condition {
+.mp-card:hover .mp-card-img img {
+  transform: scale(1.04);
+}
+
+.mp-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+.mp-badge.sale { background: #3bb54a; color: #fff; }
+.mp-badge.rent { background: #3a7abf; color: #fff; }
+
+.save-btn {
   position: absolute;
   top: 10px;
   right: 10px;
-  background: rgba(0,0,0,0.6);
-  color: #fff;
-  font-size: 0.72rem;
-  font-weight: 600;
-  padding: 3px 9px;
-  border-radius: 10px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255,255,255,0.9);
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s;
+  color: #aaa;
 }
 
-.mp-info {
-  padding: 14px;
-}
+.save-btn:hover { transform: scale(1.15); }
+.save-btn.saved { color: #e05252; }
+
+.mp-card-info { padding: 14px 16px; }
 
 .mp-price {
   font-size: 1.2rem;
@@ -122,32 +198,198 @@
   margin-bottom: 4px;
 }
 
-.mp-info h3 {
-  font-size: 0.9rem;
+.mp-card-info h3 {
+  font-size: 0.92rem;
   font-weight: 700;
   color: #1a1a1a;
-  margin: 0 0 5px;
+  margin: 0 0 4px;
 }
 
-.mp-suburb {
-  font-size: 0.8rem;
+.mp-location {
+  font-size: 0.82rem;
   color: #888;
-  margin: 0 0 12px;
+  margin: 0 0 10px;
 }
 
-.btn-mp-contact {
+.mp-stats {
+  display: flex;
+  gap: 12px;
+  font-size: 0.82rem;
+  color: #555;
+}
+
+/* ===== SWIPE ===== */
+.swipe-deck {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 20px 0 40px;
+}
+
+.swipe-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.88rem;
+  color: #888;
+  font-weight: 500;
+}
+
+.swipe-saved-count { color: #e05252; font-weight: 700; }
+
+.swipe-stage {
+  position: relative;
   width: 100%;
-  padding: 9px;
-  background: #eaf7ec;
-  color: #3bb54a;
-  border: 1px solid #b2deba;
-  border-radius: 8px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s;
+  max-width: 420px;
+  height: 560px;
 }
 
-.btn-mp-contact:hover {
-  background: #c2eacb;
+.swipe-card-behind {
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  overflow: hidden;
+  transform: scale(0.95) translateY(14px);
+  z-index: 0;
+}
+
+.swipe-card-behind img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: brightness(0.65);
+}
+
+.swipe-card-front {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 14px 44px rgba(0,0,0,0.18);
+  z-index: 1;
+  user-select: none;
+}
+
+.swipe-img {
+  position: relative;
+  height: 340px;
+  overflow: hidden;
+}
+
+.swipe-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+.swipe-overlay {
+  position: absolute;
+  top: 24px;
+  font-size: 1.1rem;
+  font-weight: 800;
+  padding: 8px 18px;
+  border-radius: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border: 3px solid;
+  pointer-events: none;
+}
+
+.swipe-overlay.like {
+  left: 20px;
+  color: #3bb54a;
+  border-color: #3bb54a;
+  background: rgba(59,181,74,0.12);
+}
+
+.swipe-overlay.skip {
+  right: 20px;
+  color: #e05252;
+  border-color: #e05252;
+  background: rgba(224,82,82,0.12);
+}
+
+.swipe-info { padding: 16px 20px; }
+
+.swipe-price {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #3bb54a;
+  margin-bottom: 4px;
+}
+
+.swipe-info h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 0 0 4px;
+}
+
+.swipe-info p {
+  font-size: 0.85rem;
+  color: #888;
+  margin: 0 0 10px;
+}
+
+.swipe-actions {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.swipe-btn {
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.12);
+}
+
+.swipe-btn:hover { transform: scale(1.1); }
+.swipe-btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+
+.undo-btn { background: #fff; color: #f5a623; width: 42px; height: 42px; font-size: 1rem; }
+.skip-btn { background: #fff; color: #e05252; width: 58px; height: 58px; font-size: 1.3rem; }
+.like-btn { background: #3bb54a; color: #fff; width: 68px; height: 68px; font-size: 1.5rem; box-shadow: 0 4px 18px rgba(59,181,74,0.45); }
+.info-btn { background: #fff; color: #3a7abf; width: 42px; height: 42px; font-size: 1rem; }
+
+.swipe-hint { font-size: 0.8rem; color: #bbb; margin: 0; }
+
+.swipe-done {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 80px 24px;
+  text-align: center;
+}
+
+.swipe-done span { font-size: 3rem; }
+.swipe-done h3 { font-size: 1.2rem; font-weight: 700; color: #1a1a1a; margin: 0; }
+.swipe-done p { color: #888; margin: 0; }
+
+.btn-reset {
+  margin-top: 8px;
+  padding: 11px 28px;
+  background: #3bb54a;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-reset:hover { background: #2fa040; }
+
+@media (max-width: 480px) {
+  .swipe-stage { height: 500px; }
+  .swipe-img { height: 280px; }
 }
