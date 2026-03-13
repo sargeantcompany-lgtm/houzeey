@@ -7,6 +7,7 @@ import './Auth.css'
 export default function Login() {
   const [form, setForm] = useState({ email: '', password: '' })
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
   const from = location.state?.from?.pathname || '/dashboard'
@@ -17,11 +18,17 @@ export default function Login() {
     setForm(f => ({ ...f, [e.target.name]: e.target.value }))
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
-    const result = login(form)
-    if (!result.ok) { setError(result.error); return }
-    navigate(from, { replace: true })
+    setLoading(true)
+    try {
+      await login(form)
+      navigate(from, { replace: true })
+    } catch (err) {
+      setError(err.message || 'Login failed')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -63,7 +70,9 @@ export default function Login() {
           <div className="auth-forgot">
             <Link to="/forgot-password">Forgot password?</Link>
           </div>
-          <button type="submit" className="auth-submit">Log In</button>
+          <button type="submit" className="auth-submit" disabled={loading}>
+            {loading ? 'Logging in…' : 'Log In'}
+          </button>
         </form>
 
         <p className="auth-switch">

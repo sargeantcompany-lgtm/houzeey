@@ -1,23 +1,29 @@
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { api } from '../api'
+import { getSession } from '../auth'
 import './Dashboard.css'
 
-const MOCK_USER = {
-  name: 'Jane Smith',
-  email: 'jane@example.com',
-  role: 'Seller / Landlord',
-  verified: true,
-  listings: [
-    { id: 1, title: '4 Bed Family Home', suburb: 'Surry Hills NSW', type: 'sale', status: 'active', views: 142, enquiries: 8, price: 1450000 },
-    { id: 3, title: 'City Apartment', suburb: 'CBD VIC', type: 'rent', status: 'active', views: 89, enquiries: 5, price: 2800 },
-  ],
-  payments: [
-    { id: 1, from: 'Tom Brady', amount: 2800, date: '01 Mar 2026', status: 'paid' },
-    { id: 2, from: 'Tom Brady', amount: 2800, date: '01 Feb 2026', status: 'paid' },
-  ],
-}
-
 export default function Dashboard() {
-  const user = MOCK_USER
+  const session = getSession()
+  const [stats, setStats] = useState(null)
+  const [listings, setListings] = useState([])
+  const [payments, setPayments] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    Promise.all([
+      api.users.stats(),
+      api.listings.mine(),
+      api.payments.history(),
+    ]).then(([s, l, p]) => {
+      setStats(s)
+      setListings(l)
+      setPayments(p)
+    }).catch(() => {}).finally(() => setLoading(false))
+  }, [])
+
+  const user = session || {}
 
   return (
     <div className="dashboard-page">
@@ -27,7 +33,7 @@ export default function Dashboard() {
           {/* Sidebar */}
           <aside className="dash-sidebar">
             <div className="dash-profile">
-              <div className="dash-avatar">{user.name[0]}</div>
+              <div className="dash-avatar">{(user.name || '?')[0]}</div>
               <div>
                 <div className="dash-name">
                   {user.name}
@@ -42,7 +48,6 @@ export default function Dashboard() {
               <a href="#listings" className="dash-nav-item">My Listings</a>
               <a href="#payments" className="dash-nav-item">Payments</a>
               <Link to="/messages" className="dash-nav-item">Messages</Link>
-              <a href="#documents" className="dash-nav-item">Documents</a>
               <a href="#profile" className="dash-nav-item">Profile settings</a>
             </nav>
           </aside>
@@ -55,20 +60,22 @@ export default function Dashboard() {
               <h2>Overview</h2>
               <div className="dash-stats">
                 <div className="dash-stat">
-                  <span className="dash-stat-val">2</span>
+                  <span className="dash-stat-val">{loading ? '…' : stats?.active_listings ?? 0}</span>
                   <span>Active listings</span>
                 </div>
                 <div className="dash-stat">
-                  <span className="dash-stat-val">231</span>
+                  <span className="dash-stat-val">{loading ? '…' : stats?.total_views ?? 0}</span>
                   <span>Total views</span>
                 </div>
                 <div className="dash-stat">
-                  <span className="dash-stat-val">13</span>
+                  <span className="dash-stat-val">{loading ? '…' : stats?.enquiries ?? 0}</span>
                   <span>Enquiries</span>
                 </div>
                 <div className="dash-stat">
-                  <span className="dash-stat-val">$2,800</span>
-                  <span>Next payment</span>
+                  <span className="dash-stat-val">
+                    {loading ? '…' : stats?.monthly_payments ? `$${Number(stats.monthly_payments).toLocaleString()}` : '$0'}
+                  </span>
+                  <span>Paid this month</span>
                 </div>
               </div>
             </section>
@@ -80,46 +87,60 @@ export default function Dashboard() {
                 <Link to="/sell" className="btn-sm-primary">+ New listing</Link>
               </div>
 
-              <div className="listings-table">
-                {user.listings.map(l => (
-                  <div key={l.id} className="listing-row">
-                    <div className="listing-row-info">
-                      <span className={`listing-badge ${l.type}`}>{l.type === 'sale' ? 'For Sale' : 'For Rent'}</span>
-                      <div>
-                        <div className="listing-row-title">{l.title}</div>
-                        <div className="listing-row-sub">{l.suburb}</div>
+              {loading ? (
+                <p>Loading…</p>
+              ) : listings.length === 0 ? (
+                <p className="dash-empty">No listings yet. <Link to="/sell">Create your first listing</Link></p>
+              ) : (
+                <div className="listings-table">
+                  {listings.map(l => (
+                    <div key={l.id} className="listing-row">
+                      <div className="listing-row-info">
+                        <span className={`listing-badge ${l.type}`}>{l.type === 'sale' ? 'For Sale' : 'For Rent'}</span>
+                        <div>
+                          <div className="listing-row-title">{l.title}</div>
+                          <div className="listing-row-sub">{l.suburb}, {l.state}</div>
+                        </div>
                       </div>
+                      <div className="listing-row-meta">
+                        <span>👁 {l.views} views</span>
+                        <span>💬 {l.enquiries ?? 0} enquiries</span>
+                        <span className={`row-status ${l.status}`}>{l.status}</span>
+                      </div>
+                      <Link to={`/listing/${l.id}`} className="btn-sm-outline">View</Link>
                     </div>
-                    <div className="listing-row-meta">
-                      <span>👁 {l.views} views</span>
-                      <span>💬 {l.enquiries} enquiries</span>
-                      <span className={`row-status ${l.status}`}>{l.status}</span>
-                    </div>
-                    <Link to={`/listing/${l.id}`} className="btn-sm-outline">View</Link>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </section>
 
             {/* Payments */}
             <section id="payments" className="dash-section">
               <div className="section-head">
-                <h2>Payments</h2>
-                <span className="dash-sub">Next due: 01 Apr 2026</span>
+                <h2>Payment History</h2>
+                <Link to="/payments" className="btn-sm-primary">Pay rent</Link>
               </div>
 
-              <div className="payments-table">
-                {user.payments.map(p => (
-                  <div key={p.id} className="payment-row">
-                    <div>
-                      <div className="payment-from">{p.from}</div>
-                      <div className="payment-date">{p.date}</div>
+              {loading ? (
+                <p>Loading…</p>
+              ) : payments.length === 0 ? (
+                <p className="dash-empty">No payment history yet.</p>
+              ) : (
+                <div className="payments-table">
+                  {payments.slice(0, 5).map(p => (
+                    <div key={p.id} className="payment-row">
+                      <div>
+                        <div className="payment-from">{p.listing_title || 'Payment'}</div>
+                        <div className="payment-date">
+                          {new Date(p.paid_at).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </div>
+                      </div>
+                      <div className="payment-amount">${Number(p.amount).toLocaleString()}</div>
+                      <span className={`payment-status ${p.status}`}>{p.status}</span>
                     </div>
-                    <div className="payment-amount">${p.amount.toLocaleString()}</div>
-                    <span className={`payment-status ${p.status}`}>{p.status}</span>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </section>
 
           </div>

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import MediaCapture from '../components/MediaCapture/MediaCapture'
+import { api } from '../api'
 import './Sell.css'
 
 const STEPS = ['Property details', 'Photos', 'Pricing', 'Review']
@@ -23,15 +24,53 @@ export default function Sell() {
     price: '',
     priceDisplay: 'exact',
   })
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
   const navigate = useNavigate()
 
   function handleChange(e) {
     setForm(f => ({ ...f, [e.target.name]: e.target.value }))
   }
 
-  function handleNext() {
-    if (step < STEPS.length - 1) setStep(s => s + 1)
-    else navigate('/dashboard')
+  async function handleNext() {
+    if (step < STEPS.length - 1) {
+      setStep(s => s + 1)
+      return
+    }
+
+    // Final step — submit
+    setSubmitting(true)
+    setError('')
+    try {
+      const formData = new FormData()
+      formData.append('type', form.listingType)
+      formData.append('property_type', form.propertyType)
+      formData.append('title', `${form.beds ? form.beds + ' Bed ' : ''}${form.propertyType.charAt(0).toUpperCase() + form.propertyType.slice(1)}, ${form.suburb}`)
+      formData.append('address', form.address)
+      formData.append('suburb', form.suburb)
+      formData.append('state', form.state)
+      formData.append('postcode', form.postcode)
+      if (form.beds) formData.append('beds', form.beds)
+      if (form.baths) formData.append('baths', form.baths)
+      if (form.cars) formData.append('cars', form.cars)
+      if (form.size) formData.append('land_size', form.size)
+      formData.append('description', form.description)
+      formData.append('price', form.price)
+      formData.append('price_display', form.priceDisplay)
+
+      // Attach media files (only blobs, not camera-captured object URLs)
+      mediaItems.forEach(item => {
+        if (item.blob) {
+          formData.append('images', item.blob, item.name || 'photo.jpg')
+        }
+      })
+
+      await api.listings.create(formData)
+      navigate('/dashboard')
+    } catch (err) {
+      setError(err.message || 'Failed to publish listing. Please try again.')
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -151,7 +190,7 @@ export default function Sell() {
             <div className="sell-step">
               <label className="full">
                 {form.listingType === 'sale' ? 'Asking price ($)' : 'Weekly rent ($)'}
-                <input type="number" name="price" value={form.price} onChange={handleChange} placeholder={form.listingType === 'sale' ? '1,450,000' : '650'} />
+                <input type="number" name="price" value={form.price} onChange={handleChange} placeholder={form.listingType === 'sale' ? '1450000' : '650'} />
               </label>
 
               <label className="full">
@@ -187,18 +226,20 @@ export default function Sell() {
                 <div className="review-item"><span>Bedrooms</span><strong>{form.beds || '-'}</strong></div>
                 <div className="review-item"><span>Bathrooms</span><strong>{form.baths || '-'}</strong></div>
                 <div className="review-item"><span>Price</span><strong>{form.price ? `$${Number(form.price).toLocaleString()}` : '-'}</strong></div>
+                <div className="review-item"><span>Photos</span><strong>{mediaItems.filter(m => m.type === 'photo').length} added</strong></div>
               </div>
               <p className="review-note">By publishing, you confirm the listing is accurate and you are authorised to list this property.</p>
+              {error && <p className="sell-error">{error}</p>}
             </div>
           )}
 
           {/* Actions */}
           <div className="sell-actions">
             {step > 0 && (
-              <button className="btn-back" onClick={() => setStep(s => s - 1)}>Back</button>
+              <button className="btn-back" onClick={() => setStep(s => s - 1)} disabled={submitting}>Back</button>
             )}
-            <button className="btn-next" onClick={handleNext}>
-              {step === STEPS.length - 1 ? 'Publish listing' : 'Next'}
+            <button className="btn-next" onClick={handleNext} disabled={submitting}>
+              {submitting ? 'Publishing…' : step === STEPS.length - 1 ? 'Publish listing' : 'Next'}
             </button>
           </div>
         </div>

@@ -14,6 +14,7 @@ const ROLES = [
 export default function Register() {
   const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '', role: 'buyer' })
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
 
   function handleChange(e) {
@@ -21,13 +22,19 @@ export default function Register() {
     setForm(f => ({ ...f, [e.target.name]: e.target.value }))
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
     if (form.password.length < 8) { setError('Password must be at least 8 characters.'); return }
     if (form.password !== form.confirm) { setError('Passwords do not match.'); return }
-    const result = register(form)
-    if (!result.ok) { setError(result.error); return }
-    navigate('/dashboard')
+    setLoading(true)
+    try {
+      await register(form)
+      navigate('/dashboard')
+    } catch (err) {
+      setError(err.message || 'Registration failed')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -63,7 +70,9 @@ export default function Register() {
             Confirm password
             <input type="password" name="confirm" value={form.confirm} onChange={handleChange} placeholder="••••••••" required />
           </label>
-          <button type="submit" className="auth-submit">Create Account</button>
+          <button type="submit" className="auth-submit" disabled={loading}>
+            {loading ? 'Creating account…' : 'Create Account'}
+          </button>
         </form>
 
         <p className="auth-switch">

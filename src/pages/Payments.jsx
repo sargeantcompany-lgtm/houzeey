@@ -1,17 +1,6 @@
-import { useState } from 'react'
-import { getSession } from '../auth'
+import { useState, useEffect } from 'react'
+import { api } from '../api'
 import './Payments.css'
-
-const MOCK_LEASES = [
-  { id: '1', property: '12 Harbour View Rd, Sydney NSW 2000', landlord: 'Michael Chen', amount: 2400, due: '2026-03-15', status: 'due' },
-  { id: '2', property: '8 Beach St, Gold Coast QLD 4217', landlord: 'Sarah Williams', amount: 1850, due: '2026-04-01', status: 'upcoming' },
-]
-
-const MOCK_HISTORY = [
-  { id: 'p1', property: '12 Harbour View Rd, Sydney NSW 2000', amount: 2400, date: '2026-02-15', method: 'Visa ••4242', status: 'paid', receipt: 'HZ-20260215' },
-  { id: 'p2', property: '12 Harbour View Rd, Sydney NSW 2000', amount: 2400, date: '2026-01-15', method: 'Visa ••4242', status: 'paid', receipt: 'HZ-20260115' },
-  { id: 'p3', property: '12 Harbour View Rd, Sydney NSW 2000', amount: 2400, date: '2025-12-15', method: 'Visa ••4242', status: 'paid', receipt: 'HZ-20251215' },
-]
 
 function CardForm({ lease, onSuccess, onCancel }) {
   const [card, setCard] = useState({ name: '', number: '', expiry: '', cvv: '' })
@@ -36,20 +25,34 @@ function CardForm({ lease, onSuccess, onCancel }) {
     return e
   }
 
-  function handlePay(e) {
+  async function handlePay(e) {
     e.preventDefault()
     const errs = validate()
     if (Object.keys(errs).length) { setErrors(errs); return }
     setProcessing(true)
-    setTimeout(() => { setProcessing(false); onSuccess(lease, card) }, 2000)
+    try {
+      const result = await api.payments.pay({
+        lease_id: lease.id,
+        listing_id: lease.listing_id,
+        amount: lease.monthly_amount,
+        method: 'card',
+      })
+      onSuccess(lease, card, result.receipt_id)
+    } catch (err) {
+      alert(err.message || 'Payment failed. Please try again.')
+    } finally {
+      setProcessing(false)
+    }
   }
+
+  const propertyLabel = lease.listing_address || lease.listing_title || 'Property'
 
   return (
     <div className="card-form-wrap">
       <div className="card-form-header">
         <h3>Pay rent</h3>
-        <p className="card-form-prop">{lease.property}</p>
-        <div className="card-form-amount">${lease.amount.toLocaleString()}<span>/month</span></div>
+        <p className="card-form-prop">{propertyLabel}</p>
+        <div className="card-form-amount">${Number(lease.monthly_amount).toLocaleString()}<span>/month</span></div>
       </div>
 
       <form onSubmit={handlePay} className="card-form">
@@ -88,7 +91,7 @@ function CardForm({ lease, onSuccess, onCancel }) {
         <div className="card-form-actions">
           <button type="button" className="btn-cancel" onClick={onCancel}>Cancel</button>
           <button type="submit" className="btn-pay" disabled={processing}>
-            {processing ? <span className="spinner" /> : `Pay $${lease.amount.toLocaleString()}`}
+            {processing ? <span className="spinner" /> : `Pay $${Number(lease.monthly_amount).toLocaleString()}`}
           </button>
         </div>
       </form>
@@ -103,7 +106,7 @@ function SuccessScreen({ receipt, onClose }) {
     <div className="pay-success">
       <div className="pay-success-icon">✓</div>
       <h2>Payment successful</h2>
-      <p>Your rent payment has been processed and a receipt emailed to you.</p>
+      <p>Your rent payment has been processed.</p>
       <div className="pay-receipt-id">Receipt #{receipt}</div>
       <button className="btn-pay" onClick={onClose}>Done</button>
     </div>
@@ -111,24 +114,31 @@ function SuccessScreen({ receipt, onClose }) {
 }
 
 export default function Payments() {
-  const session = getSession()
+  const [leases, setLeases] = useState([])
+  const [history, setHistory] = useState([])
+  const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState(null)
   const [success, setSuccess] = useState(null)
-  const [history, setHistory] = useState(MOCK_HISTORY)
 
-  function handleSuccess(lease, card) {
+  useEffect(() => {
+    Promise.all([api.payments.leases(), api.payments.history()])
+      .then(([l, h]) => { setLeases(l); setHistory(h) })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  function handleSuccess(lease, card, receiptId) {
     const last4 = card.number.replace(/\s/g, '').slice(-4)
-    const receiptId = `HZ-${Date.now()}`
-    const newEntry = {
+    setHistory(h => [{
       id: receiptId,
-      property: lease.property,
-      amount: lease.amount,
-      date: new Date().toISOString().slice(0, 10),
+      listing_title: lease.listing_title,
+      listing_address: lease.listing_address,
+      amount: lease.monthly_amount,
+      paid_at: new Date().toISOString(),
       method: `Visa ••${last4}`,
       status: 'paid',
-      receipt: receiptId,
-    }
-    setHistory(h => [newEntry, ...h])
+      receipt_id: receiptId,
+    }, ...h])
     setSelected(null)
     setSuccess(receiptId)
   }
@@ -155,54 +165,74 @@ export default function Payments() {
 
         {!success && !selected && (
           <>
-            {/* Due payments */}
+            {/* Upcoming payments */}
             <section className="pay-section">
               <h2>Upcoming payments</h2>
-              <div className="lease-list">
-                {MOCK_LEASES.map(lease => (
-                  <div key={lease.id} className={`lease-card ${lease.status}`}>
-                    <div className="lease-info">
-                      <div className="lease-property">{lease.property}</div>
-                      <div className="lease-landlord">Payable to {lease.landlord}</div>
-                      <div className="lease-due">Due {new Date(lease.due).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
-                    </div>
-                    <div className="lease-right">
-                      <div className="lease-amount">${lease.amount.toLocaleString()}</div>
-                      <span className={`lease-badge ${lease.status}`}>{lease.status === 'due' ? 'Due soon' : 'Upcoming'}</span>
-                      <button className="btn-pay-now" onClick={() => setSelected(lease)}>
-                        {lease.status === 'due' ? 'Pay now' : 'Pay early'}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              {loading ? (
+                <p>Loading…</p>
+              ) : leases.length === 0 ? (
+                <p className="dash-empty">No active leases. A landlord will set up your lease after you sign a tenancy agreement.</p>
+              ) : (
+                <div className="lease-list">
+                  {leases.map(lease => {
+                    const dueDate = lease.due_day
+                      ? new Date(new Date().getFullYear(), new Date().getMonth(), lease.due_day)
+                      : null
+                    const isDue = dueDate && dueDate <= new Date()
+                    return (
+                      <div key={lease.id} className={`lease-card ${isDue ? 'due' : 'upcoming'}`}>
+                        <div className="lease-info">
+                          <div className="lease-property">{lease.listing_address || lease.listing_title}</div>
+                          <div className="lease-landlord">Payable to {lease.landlord_name}</div>
+                          {dueDate && (
+                            <div className="lease-due">
+                              Due {dueDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}
+                            </div>
+                          )}
+                        </div>
+                        <div className="lease-right">
+                          <div className="lease-amount">${Number(lease.monthly_amount).toLocaleString()}</div>
+                          <span className={`lease-badge ${isDue ? 'due' : 'upcoming'}`}>{isDue ? 'Due soon' : 'Upcoming'}</span>
+                          <button className="btn-pay-now" onClick={() => setSelected(lease)}>
+                            {isDue ? 'Pay now' : 'Pay early'}
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </section>
 
             {/* History */}
             <section className="pay-section">
               <h2>Payment history</h2>
-              <div className="history-table">
-                <div className="history-head">
-                  <span>Property</span>
-                  <span>Date</span>
-                  <span>Method</span>
-                  <span>Amount</span>
-                  <span>Receipt</span>
-                </div>
-                {history.map(p => (
-                  <div key={p.id} className="history-row">
-                    <span className="history-prop">{p.property}</span>
-                    <span>{new Date(p.date).toLocaleDateString('en-AU')}</span>
-                    <span>{p.method}</span>
-                    <span className="history-amount">${p.amount.toLocaleString()}</span>
-                    <span>
-                      <button className="btn-receipt" onClick={() => alert(`Receipt ${p.receipt} — download coming soon`)}>
-                        {p.receipt}
-                      </button>
-                    </span>
+              {loading ? (
+                <p>Loading…</p>
+              ) : history.length === 0 ? (
+                <p className="dash-empty">No payment history yet.</p>
+              ) : (
+                <div className="history-table">
+                  <div className="history-head">
+                    <span>Property</span>
+                    <span>Date</span>
+                    <span>Method</span>
+                    <span>Amount</span>
+                    <span>Receipt</span>
                   </div>
-                ))}
-              </div>
+                  {history.map(p => (
+                    <div key={p.id} className="history-row">
+                      <span className="history-prop">{p.listing_address || p.listing_title || 'Payment'}</span>
+                      <span>{new Date(p.paid_at).toLocaleDateString('en-AU')}</span>
+                      <span>{p.method || 'Card'}</span>
+                      <span className="history-amount">${Number(p.amount).toLocaleString()}</span>
+                      <span>
+                        <span className="btn-receipt">{p.receipt_id}</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </section>
           </>
         )}

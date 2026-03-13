@@ -1,48 +1,77 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { api } from '../api'
+import { getSession } from '../auth'
 import './Messages.css'
 
-const MOCK_CONVERSATIONS = [
-  {
-    id: 1,
-    with: 'Michael Chen',
-    property: '4 Bed Family Home, Surry Hills',
-    lastMessage: 'Yes, the inspection is confirmed for Saturday.',
-    time: '2h ago',
-    unread: 2,
-    messages: [
-      { from: 'them', text: 'Hi, I saw your listing and I\'m interested in the property.', time: '10:00am' },
-      { from: 'me', text: 'Thanks for reaching out! Happy to answer any questions.', time: '10:15am' },
-      { from: 'them', text: 'Is the inspection slot on Saturday still available?', time: '10:20am' },
-      { from: 'me', text: 'Yes, the inspection is confirmed for Saturday.', time: '2h ago' },
-    ],
-  },
-  {
-    id: 2,
-    with: 'Sarah Johnson',
-    property: 'City Apartment, CBD VIC',
-    lastMessage: 'Can we negotiate on the rent?',
-    time: '1d ago',
-    unread: 0,
-    messages: [
-      { from: 'them', text: 'Hello, is the apartment still available?', time: 'Yesterday' },
-      { from: 'me', text: 'Yes it is! Would you like to arrange an inspection?', time: 'Yesterday' },
-      { from: 'them', text: 'Can we negotiate on the rent?', time: '1d ago' },
-    ],
-  },
-]
-
 export default function Messages() {
-  const [activeId, setActiveId] = useState(1)
+  const session = getSession()
+  const [conversations, setConversations] = useState([])
+  const [activeId, setActiveId] = useState(null)
+  const [messages, setMessages] = useState([])
   const [draft, setDraft] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [sending, setSending] = useState(false)
+  const messagesEndRef = useRef(null)
 
-  const active = MOCK_CONVERSATIONS.find(c => c.id === activeId)
+  useEffect(() => {
+    api.conversations.list()
+      .then(data => {
+        setConversations(data)
+        if (data.length > 0) setActiveId(data[0].id)
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
 
-  function handleSend(e) {
+  useEffect(() => {
+    if (!activeId) return
+    api.conversations.messages(activeId)
+      .then(setMessages)
+      .catch(() => setMessages([]))
+  }, [activeId])
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
+  async function handleSend(e) {
     e.preventDefault()
-    if (!draft.trim()) return
-    // TODO: wire to backend
-    setDraft('')
+    if (!draft.trim() || !activeId) return
+    setSending(true)
+    try {
+      const msg = await api.conversations.send(activeId, draft.trim())
+      setMessages(m => [...m, msg])
+      setDraft('')
+      // Update last message preview
+      setConversations(cs => cs.map(c =>
+        c.id === activeId ? { ...c, last_message: draft.trim(), last_message_at: new Date().toISOString() } : c
+      ))
+    } catch {
+      // Silently fail — message didn't send
+    } finally {
+      setSending(false)
+    }
   }
+
+  function selectConversation(id) {
+    setActiveId(id)
+    // Clear unread count locally
+    setConversations(cs => cs.map(c => c.id === id ? { ...c, unread_count: '0' } : c))
+  }
+
+  const active = conversations.find(c => c.id === activeId)
+
+  function formatTime(iso) {
+    if (!iso) return ''
+    const d = new Date(iso)
+    const now = new Date()
+    const diff = now - d
+    if (diff < 60 * 60 * 1000) return `${Math.round(diff / 60000)}m ago`
+    if (diff < 24 * 60 * 60 * 1000) return d.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })
+    return d.toLocaleDateString('en-AU', { day: '2-digit', month: 'short' })
+  }
+
+  if (loading) return <div className="messages-page"><div className="chat-empty">Loading…</div></div>
 
   return (
     <div className="messages-page">
@@ -52,22 +81,24 @@ export default function Messages() {
           <div className="convo-header">
             <h2>Messages</h2>
           </div>
-          {MOCK_CONVERSATIONS.map(c => (
+          {conversations.length === 0 ? (
+            <div className="convo-empty">No conversations yet. Contact a seller to start chatting.</div>
+          ) : conversations.map(c => (
             <button
               key={c.id}
               className={`convo-item ${activeId === c.id ? 'active' : ''}`}
-              onClick={() => setActiveId(c.id)}
+              onClick={() => selectConversation(c.id)}
             >
-              <div className="convo-avatar">{c.with[0]}</div>
+              <div className="convo-avatar">{(c.other_user_name || '?')[0]}</div>
               <div className="convo-preview">
                 <div className="convo-name">
-                  {c.with}
-                  {c.unread > 0 && <span className="unread-dot">{c.unread}</span>}
+                  {c.other_user_name}
+                  {parseInt(c.unread_count) > 0 && <span className="unread-dot">{c.unread_count}</span>}
                 </div>
-                <div className="convo-property">{c.property}</div>
-                <div className="convo-last">{c.lastMessage}</div>
+                <div className="convo-property">{c.listing_title || 'General enquiry'}</div>
+                <div className="convo-last">{c.last_message || '…'}</div>
               </div>
-              <div className="convo-time">{c.time}</div>
+              <div className="convo-time">{formatTime(c.last_message_at)}</div>
             </button>
           ))}
         </aside>
@@ -77,20 +108,21 @@ export default function Messages() {
           {active ? (
             <>
               <div className="chat-header">
-                <div className="convo-avatar">{active.with[0]}</div>
+                <div className="convo-avatar">{(active.other_user_name || '?')[0]}</div>
                 <div>
-                  <div className="chat-name">{active.with}</div>
-                  <div className="chat-property">{active.property}</div>
+                  <div className="chat-name">{active.other_user_name}</div>
+                  <div className="chat-property">{active.listing_title || 'General enquiry'}</div>
                 </div>
               </div>
 
               <div className="chat-messages">
-                {active.messages.map((m, i) => (
-                  <div key={i} className={`message ${m.from}`}>
-                    <div className="bubble">{m.text}</div>
-                    <div className="msg-time">{m.time}</div>
+                {messages.map(m => (
+                  <div key={m.id} className={`message ${m.sender_id === session?.id ? 'me' : 'them'}`}>
+                    <div className="bubble">{m.content}</div>
+                    <div className="msg-time">{formatTime(m.created_at)}</div>
                   </div>
                 ))}
+                <div ref={messagesEndRef} />
               </div>
 
               <form className="chat-input" onSubmit={handleSend}>
@@ -98,9 +130,12 @@ export default function Messages() {
                   type="text"
                   value={draft}
                   onChange={e => setDraft(e.target.value)}
-                  placeholder="Type a message..."
+                  placeholder="Type a message…"
+                  disabled={sending}
                 />
-                <button type="submit">Send</button>
+                <button type="submit" disabled={sending || !draft.trim()}>
+                  {sending ? '…' : 'Send'}
+                </button>
               </form>
             </>
           ) : (

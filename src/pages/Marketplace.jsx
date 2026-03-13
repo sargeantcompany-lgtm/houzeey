@@ -1,21 +1,20 @@
-import { useState, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
+import { api } from '../api'
+import { isLoggedIn } from '../auth'
 import './Marketplace.css'
 
-const PROPERTIES = [
-  { id: 1, type: 'sale', title: '4 Bed Family Home', suburb: 'Surry Hills', state: 'NSW', postcode: '2010', price: 1450000, beds: 4, baths: 2, cars: 2, size: 320, propertyType: 'House', img: 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=700&q=80' },
-  { id: 2, type: 'sale', title: 'Modern Townhouse', suburb: 'Fitzroy', state: 'VIC', postcode: '3065', price: 980000, beds: 3, baths: 2, cars: 1, size: 210, propertyType: 'Townhouse', img: 'https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=700&q=80' },
-  { id: 3, type: 'rent', title: 'City Apartment', suburb: 'Melbourne CBD', state: 'VIC', postcode: '3000', price: 2800, beds: 2, baths: 1, cars: 1, size: 85, propertyType: 'Apartment', img: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=700&q=80' },
-  { id: 4, type: 'sale', title: 'Beachside Cottage', suburb: 'Manly', state: 'NSW', postcode: '2095', price: 2100000, beds: 3, baths: 2, cars: 2, size: 280, propertyType: 'House', img: 'https://images.unsplash.com/photo-1480074568708-e7b720bb3f09?w=700&q=80' },
-  { id: 5, type: 'rent', title: 'Stylish Studio', suburb: 'Newtown', state: 'NSW', postcode: '2042', price: 1600, beds: 1, baths: 1, cars: 0, size: 45, propertyType: 'Apartment', img: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=700&q=80' },
-  { id: 6, type: 'sale', title: 'Heritage Queenslander', suburb: 'New Farm', state: 'QLD', postcode: '4005', price: 1750000, beds: 5, baths: 3, cars: 2, size: 560, propertyType: 'House', img: 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=700&q=80' },
-  { id: 7, type: 'rent', title: 'Garden Terrace', suburb: 'Paddington', state: 'NSW', postcode: '2021', price: 3200, beds: 3, baths: 2, cars: 1, size: 180, propertyType: 'Townhouse', img: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=700&q=80' },
-  { id: 8, type: 'sale', title: 'Luxury Penthouse', suburb: 'South Yarra', state: 'VIC', postcode: '3141', price: 3200000, beds: 3, baths: 3, cars: 2, size: 210, propertyType: 'Apartment', img: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=700&q=80' },
-]
-
+const PLACEHOLDER = 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=700&q=80'
 const STATES = ['All', 'NSW', 'VIC', 'QLD', 'WA', 'SA', 'TAS', 'ACT', 'NT']
 const PROP_TYPES = ['All', 'House', 'Apartment', 'Townhouse', 'Land']
 const BED_OPTIONS = ['Any', '1+', '2+', '3+', '4+']
+
+function formatPrice(p, type) {
+  if (p == null) return 'Contact agent'
+  return type === 'rent'
+    ? `$${Number(p).toLocaleString()}/mo`
+    : Number(p) >= 1000000 ? `$${(p / 1000000).toFixed(2)}M` : `$${(p / 1000).toFixed(0)}k`
+}
 
 export default function Marketplace() {
   const [viewMode, setViewMode] = useState('grid')
@@ -23,23 +22,52 @@ export default function Marketplace() {
   const [stateFilter, setStateFilter] = useState('All')
   const [propType, setPropType] = useState('All')
   const [beds, setBeds] = useState('Any')
-  const [saved, setSaved] = useState([])
+  const [listings, setListings] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [saved, setSaved] = useState(new Set())
 
-  const filtered = PROPERTIES.filter(p => {
-    if (listingType !== 'all' && p.type !== listingType) return false
-    if (stateFilter !== 'All' && p.state !== stateFilter) return false
-    if (propType !== 'All' && p.propertyType !== propType) return false
-    if (beds !== 'Any' && p.beds < parseInt(beds)) return false
-    return true
-  })
+  // Load listings
+  useEffect(() => {
+    setLoading(true)
+    const params = {
+      type: listingType !== 'all' ? listingType : '',
+      state: stateFilter !== 'All' ? stateFilter : '',
+      property_type: propType !== 'All' ? propType.toLowerCase() : '',
+      beds: beds !== 'Any' ? beds.replace('+', '') : '',
+    }
+    api.listings.list(params)
+      .then(data => setListings(data.listings))
+      .catch(() => setListings([]))
+      .finally(() => setLoading(false))
+  }, [listingType, stateFilter, propType, beds])
 
-  const formatPrice = (p, type) =>
-    type === 'rent'
-      ? `$${p.toLocaleString()}/mo`
-      : p >= 1000000 ? `$${(p / 1000000).toFixed(2)}M` : `$${(p / 1000).toFixed(0)}k`
+  // Load saved listings if logged in
+  useEffect(() => {
+    if (!isLoggedIn()) return
+    api.saved.list()
+      .then(data => setSaved(new Set(data.map(l => l.id))))
+      .catch(() => {})
+  }, [])
 
-  const toggleSave = (id) =>
-    setSaved(s => s.includes(id) ? s.filter(i => i !== id) : [...s, id])
+  async function toggleSave(id) {
+    if (!isLoggedIn()) return
+    const isSaved = saved.has(id)
+    setSaved(s => {
+      const next = new Set(s)
+      isSaved ? next.delete(id) : next.add(id)
+      return next
+    })
+    try {
+      isSaved ? await api.saved.unsave(id) : await api.saved.save(id)
+    } catch {
+      // Revert on error
+      setSaved(s => {
+        const next = new Set(s)
+        isSaved ? next.add(id) : next.delete(id)
+        return next
+      })
+    }
+  }
 
   return (
     <div className="mp-page">
@@ -48,7 +76,7 @@ export default function Marketplace() {
           <div className="mp-header-row">
             <div>
               <h1>Find your property</h1>
-              <p>{filtered.length} properties available</p>
+              <p>{loading ? 'Loading…' : `${listings.length} properties available`}</p>
             </div>
             <div className="view-toggle">
               <button className={viewMode === 'grid' ? 'active' : ''} onClick={() => setViewMode('grid')}>
@@ -78,45 +106,44 @@ export default function Marketplace() {
           <select value={beds} onChange={e => setBeds(e.target.value)}>
             {BED_OPTIONS.map(b => <option key={b} value={b}>{b === 'Any' ? 'Any beds' : b + ' beds'}</option>)}
           </select>
-          {saved.length > 0 && <span className="saved-count">❤ {saved.length} saved</span>}
+          {saved.size > 0 && <span className="saved-count">❤ {saved.size} saved</span>}
         </div>
 
-        {viewMode === 'grid' && (
+        {loading ? (
+          <div className="mp-loading">Loading properties…</div>
+        ) : viewMode === 'grid' ? (
           <div className="mp-grid">
-            {filtered.length === 0 ? (
+            {listings.length === 0 ? (
               <div className="no-results">No properties match your filters.</div>
-            ) : filtered.map(p => (
+            ) : listings.map(p => (
               <div key={p.id} className="mp-card">
                 <Link to={`/listing/${p.id}`} className="mp-card-img">
-                  <img src={p.img} alt={p.title} />
+                  <img src={p.primary_image || PLACEHOLDER} alt={p.title} />
                   <span className={`mp-badge ${p.type}`}>{p.type === 'sale' ? 'For Sale' : 'For Rent'}</span>
                   <button
-                    className={`save-btn ${saved.includes(p.id) ? 'saved' : ''}`}
+                    className={`save-btn ${saved.has(p.id) ? 'saved' : ''}`}
                     onClick={e => { e.preventDefault(); toggleSave(p.id) }}
-                  >{saved.includes(p.id) ? '❤' : '♡'}</button>
+                  >{saved.has(p.id) ? '❤' : '♡'}</button>
                 </Link>
                 <div className="mp-card-info">
                   <div className="mp-price">{formatPrice(p.price, p.type)}</div>
                   <h3>{p.title}</h3>
                   <p className="mp-location">📍 {p.suburb}, {p.state} {p.postcode}</p>
                   <div className="mp-stats">
-                    <span>🛏 {p.beds}</span>
-                    <span>🚿 {p.baths}</span>
-                    <span>🚗 {p.cars}</span>
-                    <span>📐 {p.size}m²</span>
+                    {p.beds != null && <span>🛏 {p.beds}</span>}
+                    {p.baths != null && <span>🚿 {p.baths}</span>}
+                    {p.cars != null && <span>🚗 {p.cars}</span>}
+                    {p.land_size != null && <span>📐 {p.land_size}m²</span>}
                   </div>
                 </div>
               </div>
             ))}
           </div>
-        )}
-
-        {viewMode === 'swipe' && (
+        ) : (
           <SwipeDeck
-            properties={filtered}
+            properties={listings}
             saved={saved}
             onSave={toggleSave}
-            formatPrice={formatPrice}
           />
         )}
       </div>
@@ -124,7 +151,7 @@ export default function Marketplace() {
   )
 }
 
-function SwipeDeck({ properties, saved, onSave, formatPrice }) {
+function SwipeDeck({ properties, saved, onSave }) {
   const [index, setIndex] = useState(0)
   const [offset, setOffset] = useState({ x: 0, y: 0 })
   const [dragging, setDragging] = useState(false)
@@ -184,7 +211,7 @@ function SwipeDeck({ properties, saved, onSave, formatPrice }) {
       <div className="swipe-done">
         <span>🏠</span>
         <h3>You've seen all {properties.length} properties!</h3>
-        <p>{saved.length} saved to your favourites.</p>
+        <p>{saved.size} saved to your favourites.</p>
         <button onClick={() => { setIndex(0); setHistory([]) }} className="btn-reset">See again</button>
       </div>
     )
@@ -195,22 +222,22 @@ function SwipeDeck({ properties, saved, onSave, formatPrice }) {
     ? { transform: `translate(${offset.x}px, ${offset.y * 0.3}px) rotate(${rotate}deg)`, transition: 'none', cursor: 'grabbing' }
     : { transform: 'translate(0,0) rotate(0deg)', transition: 'transform 0.35s cubic-bezier(0.23,1,0.32,1)', cursor: 'grab' }
 
+  const nextProp = properties[index + 1]
+
   return (
     <div className="swipe-deck">
       <div className="swipe-progress">
         <span>{index + 1} of {properties.length}</span>
-        {saved.length > 0 && <span className="swipe-saved-count">❤ {saved.length} saved</span>}
+        {saved.size > 0 && <span className="swipe-saved-count">❤ {saved.size} saved</span>}
       </div>
 
       <div className="swipe-stage">
-        {/* Behind card */}
-        {properties[index + 1] && (
+        {nextProp && (
           <div className="swipe-card swipe-card-behind">
-            <img src={properties[index + 1].img} alt="" draggable={false} />
+            <img src={nextProp.primary_image || PLACEHOLDER} alt="" draggable={false} />
           </div>
         )}
 
-        {/* Active card */}
         <div
           className="swipe-card swipe-card-front"
           style={cardStyle}
@@ -223,7 +250,7 @@ function SwipeDeck({ properties, saved, onSave, formatPrice }) {
           onTouchEnd={onDragEnd}
         >
           <div className="swipe-img">
-            <img src={current.img} alt={current.title} draggable={false} />
+            <img src={current.primary_image || PLACEHOLDER} alt={current.title} draggable={false} />
             <span className={`mp-badge ${current.type}`}>{current.type === 'sale' ? 'For Sale' : 'For Rent'}</span>
             {decision === 'like' && <div className="swipe-overlay like">❤ Save</div>}
             {decision === 'skip' && <div className="swipe-overlay skip">✕ Skip</div>}
@@ -233,10 +260,10 @@ function SwipeDeck({ properties, saved, onSave, formatPrice }) {
             <h3>{current.title}</h3>
             <p>📍 {current.suburb}, {current.state} {current.postcode}</p>
             <div className="mp-stats">
-              <span>🛏 {current.beds}</span>
-              <span>🚿 {current.baths}</span>
-              <span>🚗 {current.cars}</span>
-              <span>📐 {current.size}m²</span>
+              {current.beds != null && <span>🛏 {current.beds}</span>}
+              {current.baths != null && <span>🚿 {current.baths}</span>}
+              {current.cars != null && <span>🚗 {current.cars}</span>}
+              {current.land_size != null && <span>📐 {current.land_size}m²</span>}
             </div>
           </div>
         </div>
