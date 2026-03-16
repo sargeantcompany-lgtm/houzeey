@@ -58,7 +58,12 @@ router.put('/me', requireAuth, upload.single('avatar'), async (req, res) => {
   try {
     let avatarUrl = undefined
     if (req.file) {
-      avatarUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`
+      const base64 = req.file.buffer.toString('base64')
+      const imgResult = await pool.query(
+        'INSERT INTO listing_images (listing_id, data, mimetype, display_order) VALUES (NULL, $1, $2, 0) RETURNING id',
+        [base64, req.file.mimetype]
+      )
+      avatarUrl = `${req.protocol}://${req.get('host')}/api/images/${imgResult.rows[0].id}`
     }
 
     const result = await pool.query(`

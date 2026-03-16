@@ -6,8 +6,8 @@ import { upload } from '../middleware/upload.js'
 
 const router = Router()
 
-function buildImageUrl(req, filename) {
-  return `${req.protocol}://${req.get('host')}/uploads/${filename}`
+function buildImageUrl(req, imageId) {
+  return `${req.protocol}://${req.get('host')}/api/images/${imageId}`
 }
 
 // GET /api/listings — browse with filters
@@ -153,11 +153,14 @@ router.post('/', requireAuth, upload.array('images', 20), [
 
     if (req.files && req.files.length > 0) {
       for (let i = 0; i < req.files.length; i++) {
-        const url = buildImageUrl(req, req.files[i].filename)
-        await client.query(
-          'INSERT INTO listing_images (listing_id, url, display_order) VALUES ($1, $2, $3)',
-          [listing.id, url, i]
+        const file = req.files[i]
+        const base64 = file.buffer.toString('base64')
+        const imgResult = await client.query(
+          'INSERT INTO listing_images (listing_id, data, mimetype, display_order) VALUES ($1, $2, $3, $4) RETURNING id',
+          [listing.id, base64, file.mimetype, i]
         )
+        const url = buildImageUrl(req, imgResult.rows[0].id)
+        await client.query('UPDATE listing_images SET url = $1 WHERE id = $2', [url, imgResult.rows[0].id])
       }
     }
 

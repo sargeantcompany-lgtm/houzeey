@@ -5,8 +5,13 @@ import { upload } from '../middleware/upload.js'
 
 const router = Router()
 
-function buildUrl(req, filename) {
-  return `${req.protocol}://${req.get('host')}/uploads/${filename}`
+async function storeFile(req, file) {
+  const base64 = file.buffer.toString('base64')
+  const result = await pool.query(
+    'INSERT INTO listing_images (listing_id, data, mimetype, display_order) VALUES (NULL, $1, $2, 0) RETURNING id',
+    [base64, file.mimetype]
+  )
+  return `${req.protocol}://${req.get('host')}/api/images/${result.rows[0].id}`
 }
 
 // GET /api/applications/listing/:listingId — landlord views all applications for their listing
@@ -105,7 +110,7 @@ router.post('/', requireAuth, upload.single('id_document'), async (req, res) => 
       return res.status(409).json({ error: 'You have already applied to this listing' })
     }
 
-    const idDocUrl = req.file ? buildUrl(req, req.file.filename) : null
+    const idDocUrl = req.file ? await storeFile(req, req.file) : null
 
     const result = await pool.query(`
       INSERT INTO rental_applications (

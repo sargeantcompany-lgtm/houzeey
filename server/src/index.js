@@ -75,10 +75,14 @@ async function initDb() {
     CREATE TABLE IF NOT EXISTS listing_images (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       listing_id UUID REFERENCES listings(id) ON DELETE CASCADE,
-      url TEXT NOT NULL,
+      url TEXT,
+      data TEXT,
+      mimetype VARCHAR(50),
       display_order INTEGER DEFAULT 0,
       created_at TIMESTAMPTZ DEFAULT NOW()
     );`)
+  await pool.query(`ALTER TABLE listing_images ADD COLUMN IF NOT EXISTS data TEXT;`)
+  await pool.query(`ALTER TABLE listing_images ADD COLUMN IF NOT EXISTS mimetype VARCHAR(50);`)
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS conversations (
@@ -344,6 +348,20 @@ app.use('/api/settlement', settlementRoutes)
 app.use('/api/applications', applicationRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/marketing', marketingRoutes)
+
+// Serve images from DB
+app.get('/api/images/:id', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT data, mimetype FROM listing_images WHERE id = $1', [req.params.id])
+    if (result.rows.length === 0 || !result.rows[0].data) return res.status(404).end()
+    const { data, mimetype } = result.rows[0]
+    res.setHeader('Content-Type', mimetype || 'image/jpeg')
+    res.setHeader('Cache-Control', 'public, max-age=31536000')
+    res.send(Buffer.from(data, 'base64'))
+  } catch {
+    res.status(500).end()
+  }
+})
 
 app.get('/health', (_, res) => res.json({ status: 'ok', service: 'houzeey-api' }))
 app.use((_, res) => res.status(404).json({ error: 'Not found' }))
