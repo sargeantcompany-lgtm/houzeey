@@ -40,6 +40,25 @@ router.get('/listing/:listingId', requireAuth, async (req, res) => {
   }
 })
 
+// GET /api/inspections/received — all inspections booked for my listings (as owner)
+router.get('/received', requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT i.*, u.name AS booker_name, u.email AS booker_email, u.phone AS booker_phone,
+             l.title AS listing_title, l.suburb AS listing_suburb
+      FROM inspections i
+      JOIN users u ON i.booker_id = u.id
+      JOIN listings l ON i.listing_id = l.id
+      WHERE i.owner_id = $1
+      ORDER BY i.datetime ASC
+    `, [req.user.id])
+    res.json(result.rows)
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Failed to fetch inspections' })
+  }
+})
+
 // GET /api/inspections/mine — my booked inspections
 router.get('/mine', requireAuth, async (req, res) => {
   try {

@@ -1,0 +1,144 @@
+.notif-page {
+  background: var(--bg);
+  padding: 36px 24px 80px;
+  min-height: 100vh;
+}
+
+.notif-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 28px;
+}
+
+.notif-header h1 {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.notif-unread-count {
+  background: var(--green);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 999px;
+}
+
+.btn-mark-all {
+  padding: 8px 16px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  font-size: 0.83rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background var(--transition);
+}
+
+.btn-mark-all:hover { background: var(--bg); }
+
+.notif-empty {
+  color: var(--text-muted);
+  text-align: center;
+  padding: 60px 0;
+}
+
+.notif-empty-state {
+  text-align: center;
+  padding: 80px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.notif-empty-icon { font-size: 3rem; }
+
+.notif-empty-state h3 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.notif-empty-state p { color: var(--text-muted); }
+
+.notif-group-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 20px 0 8px;
+}
+
+.notif-list {
+  max-width: 680px;
+}
+
+.notif-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: background var(--transition);
+  position: relative;
+}
+
+.notif-item.unread {
+  background: var(--green-light);
+  border-color: var(--green-border);
+}
+
+.notif-item:hover { background: #f3f4f6; }
+.notif-item.unread:hover { background: #e6f7ea; }
+
+.notif-icon {
+  font-size: 1.3rem;
+  width: 36px;
+  height: 36px;
+  background: var(--bg);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.notif-body { flex: 1; }
+
+.notif-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 3px;
+}
+
+.notif-text {
+  font-size: 0.83rem;
+  color: var(--text-secondary);
+  margin-bottom: 5px;
+}
+
+.notif-time {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.notif-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--green);
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 6px;
+}

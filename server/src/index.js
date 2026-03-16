@@ -3,6 +3,7 @@ import cors from 'cors'
 import dotenv from 'dotenv'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import rateLimit from 'express-rate-limit'
 import pool from './db.js'
 import authRoutes from './routes/auth.js'
 import listingRoutes from './routes/listings.js'
@@ -18,6 +19,8 @@ import settlementRoutes from './routes/settlement.js'
 import applicationRoutes from './routes/applications.js'
 import adminRoutes from './routes/admin.js'
 import marketingRoutes from './routes/marketing.js'
+import notificationRoutes from './routes/notifications.js'
+import supportRoutes from './routes/support.js'
 
 dotenv.config()
 
@@ -283,6 +286,58 @@ async function initDb() {
       created_at TIMESTAMPTZ DEFAULT NOW()
     );`)
 
+  // Notifications
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS notifications (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+      type VARCHAR(50) DEFAULT 'system',
+      title VARCHAR(255) NOT NULL,
+      body TEXT,
+      link TEXT,
+      read BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );`)
+
+  // Password reset tokens
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+      token VARCHAR(128) UNIQUE NOT NULL,
+      expires_at TIMESTAMPTZ NOT NULL,
+      used BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );`)
+
+  // Support tickets
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS support_tickets (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      type VARCHAR(50) DEFAULT 'general',
+      subject VARCHAR(255) NOT NULL,
+      description TEXT NOT NULL,
+      related_id UUID,
+      status VARCHAR(20) DEFAULT 'open',
+      admin_response TEXT,
+      updated_at TIMESTAMPTZ DEFAULT NOW(),
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );`)
+
+  // Audit log
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS audit_log (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      action VARCHAR(100) NOT NULL,
+      entity_type VARCHAR(50),
+      entity_id UUID,
+      meta JSONB,
+      ip_address VARCHAR(64),
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );`)
+
   // Marketing contacts
   await pool.query(`
     CREATE TABLE IF NOT EXISTS contacts (
@@ -322,10 +377,29 @@ const __dirname = path.dirname(__filename)
 const app = express()
 const PORT = process.env.PORT || 3001
 
+// Rate limiting
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20,
+  message: { error: 'Too many attempts, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+})
+
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  message: { error: 'Too many requests, please slow down.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+})
+
 app.use(cors({
   origin: process.env.CLIENT_URL || 'http://localhost:5173',
   credentials: true,
 }))
+
+app.use(generalLimiter)
 
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
@@ -334,7 +408,7 @@ const uploadDir = path.join(__dirname, '../../', process.env.UPLOAD_DIR || 'uplo
 app.use('/uploads', express.static(uploadDir))
 
 // Routes
-app.use('/api/auth', authRoutes)
+app.use('/api/auth', authLimiter, authRoutes)
 app.use('/api/listings', listingRoutes)
 app.use('/api/conversations', messageRoutes)
 app.use('/api/payments', paymentRoutes)
@@ -348,6 +422,8 @@ app.use('/api/settlement', settlementRoutes)
 app.use('/api/applications', applicationRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/marketing', marketingRoutes)
+app.use('/api/notifications', notificationRoutes)
+app.use('/api/support', supportRoutes)
 
 // Serve images from DB
 app.get('/api/images/:id', async (req, res) => {

@@ -36,6 +36,25 @@ router.get('/listing/:listingId', requireAuth, async (req, res) => {
   }
 })
 
+// GET /api/applications/received — landlord views all applications across their listings
+router.get('/received', requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT ra.*, u.name AS tenant_name, u.email AS tenant_email, u.phone AS tenant_phone,
+             l.title AS listing_title, l.suburb AS listing_suburb
+      FROM rental_applications ra
+      JOIN users u ON ra.tenant_id = u.id
+      JOIN listings l ON ra.listing_id = l.id
+      WHERE ra.landlord_id = $1
+      ORDER BY ra.created_at DESC
+    `, [req.user.id])
+    res.json(result.rows)
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Failed to fetch applications' })
+  }
+})
+
 // GET /api/applications/mine — tenant views their own applications
 router.get('/mine', requireAuth, async (req, res) => {
   try {

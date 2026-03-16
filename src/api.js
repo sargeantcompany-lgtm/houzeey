@@ -34,6 +34,10 @@ export const api = {
     register: (data) => post('/api/auth/register', data),
     login: (data) => post('/api/auth/login', data),
     me: () => get('/api/auth/me'),
+    updateProfile: (data) => put('/api/auth/me', data),
+    changePassword: (data) => post('/api/auth/change-password', data),
+    forgotPassword: (email) => post('/api/auth/forgot-password', { email }),
+    resetPassword: (token, password) => post('/api/auth/reset-password', { token, password }),
   },
 
   // Listings
@@ -81,7 +85,9 @@ export const api = {
 
   // Reviews
   reviews: {
-    get: (userId) => get(`/api/reviews/${userId}`),
+    get: (userId) => userId
+      ? get(`/api/reviews/${userId}`).then(d => ({ ...d, count: d.count ?? d.total ?? 0 }))
+      : Promise.resolve({ reviews: [], avg_rating: 0, count: 0 }),
     submit: (data) => post('/api/reviews', data),
   },
 
@@ -96,6 +102,7 @@ export const api = {
     slots: (listingId) => get(`/api/inspections/listing/${listingId}/slots`),
     forListing: (listingId) => get(`/api/inspections/listing/${listingId}`),
     mine: () => get('/api/inspections/mine'),
+    received: () => get('/api/inspections/received'),
     addSlots: (listingId, slots) => post(`/api/inspections/listing/${listingId}/slots`, { slots }),
     book: (slotId, notes) => post(`/api/inspections/book/${slotId}`, { notes }),
     cancel: (id) => del(`/api/inspections/${id}`),
@@ -105,6 +112,7 @@ export const api = {
   offers: {
     forListing: (listingId) => get(`/api/offers/listing/${listingId}`),
     mine: () => get('/api/offers/mine'),
+    received: () => get('/api/offers/received'),
     get: (id) => get(`/api/offers/${id}`),
     submit: (data) => post('/api/offers', data),
     counter: (id, data) => post(`/api/offers/${id}/counter`, data),
@@ -125,6 +133,7 @@ export const api = {
   applications: {
     forListing: (listingId) => get(`/api/applications/listing/${listingId}`),
     mine: () => get('/api/applications/mine'),
+    received: () => get('/api/applications/received'),
     get: (id) => get(`/api/applications/${id}`),
     submit: (formData) => post('/api/applications', formData),
     updateStatus: (id, status, notes) => put(`/api/applications/${id}/status`, { status, landlord_notes: notes }),
@@ -147,6 +156,21 @@ export const api = {
     deleteListing: (id) => del(`/api/admin/listings/${id}`),
     verifications: () => get('/api/admin/verifications'),
     reviewVerification: (id, status, notes) => put(`/api/admin/verifications/${id}`, { status, notes }),
+  },
+
+  // Notifications
+  notifications: {
+    list: () => get('/api/notifications'),
+    markRead: (id) => put(`/api/notifications/${id}/read`, {}),
+    markAllRead: () => put('/api/notifications/read-all', {}),
+  },
+
+  // Support
+  support: {
+    mine: () => get('/api/support'),
+    create: (data) => post('/api/support', data),
+    adminAll: (status) => get(`/api/support/admin${status ? `?status=${status}` : ''}`),
+    update: (id, data) => put(`/api/support/${id}`, data),
   },
 
   // Marketing

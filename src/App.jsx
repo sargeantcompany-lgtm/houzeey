@@ -19,6 +19,15 @@ import Settlement from './pages/Settlement'
 import RentalApplication from './pages/RentalApplication'
 import Admin from './pages/Admin'
 import Marketing from './pages/Marketing'
+import EditListing from './pages/EditListing'
+import Profile from './pages/Profile'
+import SavedListings from './pages/SavedListings'
+import Notifications from './pages/Notifications'
+import ForgotPassword from './pages/ForgotPassword'
+import ResetPassword from './pages/ResetPassword'
+import Support from './pages/Support'
+import Terms from './pages/Terms'
+import Privacy from './pages/Privacy'
 
 export default function App() {
   return (
@@ -44,6 +53,13 @@ export default function App() {
           <Route path="/offers/view/:offerId" element={<ProtectedRoute><Offers /></ProtectedRoute>} />
           <Route path="/settlement/:offerId" element={<ProtectedRoute><Settlement /></ProtectedRoute>} />
           <Route path="/apply/:listingId" element={<ProtectedRoute><RentalApplication /></ProtectedRoute>} />
+          <Route path="/listing/:id/edit" element={<ProtectedRoute><EditListing /></ProtectedRoute>} />
+          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route path="/saved" element={<ProtectedRoute><SavedListings /></ProtectedRoute>} />
+          <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+          <Route path="/support" element={<Support />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/privacy" element={<Privacy />} />
           <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
           <Route path="/marketing" element={<ProtectedRoute><Marketing /></ProtectedRoute>} />
 
@@ -52,6 +68,8 @@ export default function App() {
         {/* Auth pages outside layout */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
       </Routes>
     </BrowserRouter>
   )

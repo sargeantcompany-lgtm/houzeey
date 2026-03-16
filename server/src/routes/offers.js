@@ -29,6 +29,25 @@ router.get('/listing/:listingId', requireAuth, async (req, res) => {
   }
 })
 
+// GET /api/offers/received — offers received on my listings (as seller)
+router.get('/received', requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT o.*, l.title AS listing_title, l.address AS listing_address,
+             l.suburb AS listing_suburb, u.name AS buyer_name
+      FROM offers o
+      JOIN listings l ON o.listing_id = l.id
+      JOIN users u ON o.buyer_id = u.id
+      WHERE o.seller_id = $1
+      ORDER BY o.updated_at DESC
+    `, [req.user.id])
+    res.json(result.rows)
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Failed to fetch received offers' })
+  }
+})
+
 // GET /api/offers/mine — offers I've made as a buyer
 router.get('/mine', requireAuth, async (req, res) => {
   try {

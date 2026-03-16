@@ -29,14 +29,16 @@ export default function Footer() {
             <Link to="/login">Log In</Link>
             <Link to="/register">Sign Up</Link>
             <Link to="/dashboard">Dashboard</Link>
-            <Link to="/messages">Messages</Link>
+            <Link to="/saved">Saved Properties</Link>
+            <Link to="/notifications">Notifications</Link>
+            <Link to="/profile">My Profile</Link>
           </div>
           <div className="footer-col">
-            <h4>Company</h4>
-            <Link to="/about">About</Link>
-            <Link to="/contact">Contact</Link>
+            <h4>Help &amp; Legal</h4>
+            <Link to="/support">Support &amp; Help</Link>
             <Link to="/privacy">Privacy Policy</Link>
             <Link to="/terms">Terms of Service</Link>
+            <Link to="/verify-identity">Verify Identity</Link>
           </div>
         </div>
       </div>

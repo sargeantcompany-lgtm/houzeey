@@ -28,6 +28,7 @@
 
 /* Gallery */
 .gallery-main {
+  position: relative;
   border-radius: var(--radius-lg);
   overflow: hidden;
   height: 420px;
@@ -327,6 +328,239 @@
   color: var(--text-muted);
   margin-top: 2px;
 }
+
+.seller-rating {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.stars-sm { color: #f59e0b; letter-spacing: 1px; }
+
+/* Listing meta */
+.detail-listing-meta {
+  margin-top: 16px;
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+
+.meta-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 0;
+  font-size: 0.82rem;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.meta-row span:first-child { color: var(--text-muted); }
+.meta-row span:last-child { color: var(--text-primary); font-weight: 600; }
+
+/* Save button on gallery */
+.gallery-save-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 40px;
+  height: 40px;
+  background: rgba(255,255,255,0.92);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1.3rem;
+  color: #ef4444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  transition: transform var(--transition);
+  z-index: 2;
+}
+
+.gallery-save-btn:hover { transform: scale(1.15); }
+
+/* Edit listing btn */
+.btn-edit-listing {
+  display: block;
+  text-align: center;
+  padding: 10px;
+  border: 1.5px solid #6b7280;
+  color: #6b7280;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.88rem;
+  transition: background var(--transition);
+}
+
+.btn-edit-listing:hover { background: #f5f5f5; }
+
+/* Detail tabs */
+.detail-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+
+.detail-tab {
+  padding: 10px 18px;
+  border: none;
+  background: none;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color var(--transition), border-color var(--transition);
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.detail-tab:hover { color: var(--green); }
+.detail-tab.active { color: var(--green); border-bottom-color: var(--green); }
+
+/* Mortgage calculator */
+.mortgage-section h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.calc-disclaimer {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.calc-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.calc-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.calc-fields input, .calc-fields select {
+  padding: 9px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  font-family: inherit;
+}
+
+.calc-fields input:focus, .calc-fields select:focus {
+  outline: none;
+  border-color: var(--green);
+}
+
+.calc-btn {
+  padding: 10px 24px;
+  background: var(--green);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background var(--transition);
+}
+
+.calc-btn:hover { background: var(--green-dark); }
+
+.calc-results {
+  margin-top: 20px;
+  background: var(--green-light);
+  border: 1px solid var(--green-border);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+
+.calc-main-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--green-border);
+}
+
+.calc-amount {
+  font-size: 2.2rem;
+  font-weight: 900;
+  color: var(--green-dark);
+}
+
+.calc-main-result span:last-child {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+.calc-breakdown { display: flex; flex-direction: column; gap: 6px; }
+
+.calc-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+}
+
+.calc-row span { color: var(--text-secondary); }
+.calc-row strong { color: var(--text-primary); }
+
+/* Reviews */
+.detail-reviews-summary {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.detail-avg {
+  font-size: 3rem;
+  font-weight: 900;
+  color: var(--green);
+}
+
+.review-stars-lg { font-size: 1.3rem; color: #f59e0b; letter-spacing: 2px; }
+
+.detail-review-count { font-size: 0.82rem; color: var(--text-muted); }
+
+.detail-review-item {
+  padding: 14px;
+  background: var(--bg);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  margin-bottom: 10px;
+}
+
+.detail-review-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.review-stars { color: #f59e0b; font-size: 0.95rem; }
+.detail-review-date { font-size: 0.75rem; color: var(--text-muted); }
+.detail-review-comment { font-size: 0.87rem; color: var(--text-secondary); }
+
+.detail-empty { color: var(--text-muted); font-size: 0.88rem; padding: 16px 0; }
 
 @media (max-width: 900px) {
   .detail-grid {
