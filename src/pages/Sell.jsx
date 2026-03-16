@@ -55,7 +55,7 @@ export default function Sell() {
       if (form.cars) formData.append('cars', form.cars)
       if (form.size) formData.append('land_size', form.size)
       formData.append('description', form.description)
-      formData.append('price', form.price)
+      formData.append('price', form.price || '0')
       formData.append('price_display', form.priceDisplay)
 
       // Attach media files (only blobs, not camera-captured object URLs)
