@@ -13,7 +13,7 @@
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 24px;
-  height: 68px;
+  height: 100px;
   display: flex;
   align-items: center;
   gap: 28px;
@@ -148,7 +148,7 @@
   .navbar-links {
     display: none;
     position: absolute;
-    top: 68px;
+    top: 100px;
     left: 0;
     right: 0;
     background: rgba(255,255,255,0.98);
