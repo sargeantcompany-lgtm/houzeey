@@ -1,0 +1,59 @@
+.verify-page { padding: 48px 0; min-height: 70vh; }
+
+.verify-card {
+  max-width: 600px;
+  margin: 0 auto;
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  padding: 40px;
+  box-shadow: var(--shadow);
+}
+
+.verify-header { text-align: center; margin-bottom: 32px; }
+.verify-icon { font-size: 3rem; margin-bottom: 12px; }
+.verify-header h1 { font-size: 1.75rem; margin-bottom: 8px; }
+.verify-header p { color: var(--text-secondary); }
+
+.verify-status {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 32px;
+}
+.verify-status--green { background: #f0fdf4; border: 1px solid #bbf7d0; }
+.verify-status--orange { background: #fffbeb; border: 1px solid #fde68a; }
+.verify-status--red { background: #fef2f2; border: 1px solid #fecaca; }
+
+.verify-status-icon { font-size: 1.5rem; flex-shrink: 0; }
+.verify-status strong { display: block; font-size: 1rem; margin-bottom: 4px; }
+.verify-status p { color: var(--text-secondary); font-size: 0.875rem; margin: 4px 0 0; }
+
+.verify-form h2 { margin-bottom: 20px; }
+
+.form-group { margin-bottom: 20px; }
+.form-group label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 0.9rem; }
+.form-group select, .form-group input[type="file"] {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  background: #fff;
+}
+.field-hint { color: var(--text-secondary); font-size: 0.8rem; margin-bottom: 8px; }
+.file-chosen { font-size: 0.8rem; color: var(--green); margin-top: 6px; display: block; }
+
+.btn-full { width: 100%; padding: 12px; font-size: 1rem; }
+.error-msg { background: #fef2f2; border: 1px solid #fecaca; color: #dc2626; padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; font-size: 0.875rem; }
+
+.verify-privacy { font-size: 0.8rem; color: var(--text-secondary); text-align: center; margin-top: 16px; }
+
+.verify-success { text-align: center; padding: 24px 0; }
+.success-icon { font-size: 3rem; margin-bottom: 12px; }
+.verify-success h2 { margin-bottom: 8px; }
+.verify-success p { color: var(--text-secondary); }
+
+.loading-text { padding: 48px 0; text-align: center; color: var(--text-secondary); }

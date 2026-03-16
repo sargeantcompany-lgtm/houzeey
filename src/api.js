@@ -8,7 +8,6 @@ async function request(path, options = {}) {
   const token = getToken()
   const headers = { ...options.headers }
 
-  // Don't set Content-Type for FormData — browser sets it with boundary
   if (!(options.body instanceof FormData)) {
     headers['Content-Type'] = 'application/json'
   }
@@ -78,5 +77,89 @@ export const api = {
     list: () => get('/api/saved'),
     save: (listingId) => post(`/api/saved/${listingId}`),
     unsave: (listingId) => del(`/api/saved/${listingId}`),
+  },
+
+  // Reviews
+  reviews: {
+    get: (userId) => get(`/api/reviews/${userId}`),
+    submit: (data) => post('/api/reviews', data),
+  },
+
+  // Identity verification
+  identity: {
+    me: () => get('/api/identity/me'),
+    submit: (formData) => post('/api/identity', formData),
+  },
+
+  // Inspections
+  inspections: {
+    slots: (listingId) => get(`/api/inspections/listing/${listingId}/slots`),
+    forListing: (listingId) => get(`/api/inspections/listing/${listingId}`),
+    mine: () => get('/api/inspections/mine'),
+    addSlots: (listingId, slots) => post(`/api/inspections/listing/${listingId}/slots`, { slots }),
+    book: (slotId, notes) => post(`/api/inspections/book/${slotId}`, { notes }),
+    cancel: (id) => del(`/api/inspections/${id}`),
+  },
+
+  // Offers
+  offers: {
+    forListing: (listingId) => get(`/api/offers/listing/${listingId}`),
+    mine: () => get('/api/offers/mine'),
+    get: (id) => get(`/api/offers/${id}`),
+    submit: (data) => post('/api/offers', data),
+    counter: (id, data) => post(`/api/offers/${id}/counter`, data),
+    accept: (id) => post(`/api/offers/${id}/accept`, {}),
+    reject: (id) => post(`/api/offers/${id}/reject`, {}),
+    withdraw: (id) => post(`/api/offers/${id}/withdraw`, {}),
+    pdf: (id) => `${BASE}/api/offers/${id}/pdf`,
+  },
+
+  // Settlement
+  settlement: {
+    get: (offerId) => get(`/api/settlement/${offerId}`),
+    updateMilestone: (offerId, milestoneId, completed) =>
+      put(`/api/settlement/${offerId}/milestone/${milestoneId}`, { completed }),
+  },
+
+  // Rental applications
+  applications: {
+    forListing: (listingId) => get(`/api/applications/listing/${listingId}`),
+    mine: () => get('/api/applications/mine'),
+    get: (id) => get(`/api/applications/${id}`),
+    submit: (formData) => post('/api/applications', formData),
+    updateStatus: (id, status, notes) => put(`/api/applications/${id}/status`, { status, landlord_notes: notes }),
+  },
+
+  // Admin
+  admin: {
+    stats: () => get('/api/admin/stats'),
+    users: (params = {}) => {
+      const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v)).toString()
+      return get(`/api/admin/users${qs ? `?${qs}` : ''}`)
+    },
+    updateUser: (id, data) => put(`/api/admin/users/${id}`, data),
+    deleteUser: (id) => del(`/api/admin/users/${id}`),
+    listings: (params = {}) => {
+      const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v)).toString()
+      return get(`/api/admin/listings${qs ? `?${qs}` : ''}`)
+    },
+    updateListing: (id, data) => put(`/api/admin/listings/${id}`, data),
+    deleteListing: (id) => del(`/api/admin/listings/${id}`),
+    verifications: () => get('/api/admin/verifications'),
+    reviewVerification: (id, status, notes) => put(`/api/admin/verifications/${id}`, { status, notes }),
+  },
+
+  // Marketing
+  marketing: {
+    contacts: (params = {}) => {
+      const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v)).toString()
+      return get(`/api/marketing/contacts${qs ? `?${qs}` : ''}`)
+    },
+    addContact: (data) => post('/api/marketing/contacts', data),
+    importContacts: (contacts) => post('/api/marketing/contacts/import', { contacts }),
+    deleteContact: (id) => del(`/api/marketing/contacts/${id}`),
+    campaigns: () => get('/api/marketing/campaigns'),
+    createCampaign: (data) => post('/api/marketing/campaigns', data),
+    sendCampaign: (id) => post(`/api/marketing/campaigns/${id}/send`, {}),
   },
 }

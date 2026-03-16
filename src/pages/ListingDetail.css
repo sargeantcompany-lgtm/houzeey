@@ -203,6 +203,19 @@
   margin: 0 0 20px;
 }
 
+.listing-action-btns { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+
+.btn-offer, .btn-apply, .btn-inspect {
+  display: block; width: 100%; padding: 12px; text-align: center; border-radius: var(--radius);
+  font-size: 0.95rem; font-weight: 600; text-decoration: none; cursor: pointer; border: none;
+}
+.btn-offer { background: #1d4ed8; color: #fff; }
+.btn-offer:hover { background: #1e40af; }
+.btn-apply { background: #7c3aed; color: #fff; }
+.btn-apply:hover { background: #6d28d9; }
+.btn-inspect { background: #f9fafb; border: 1.5px solid var(--border); color: #374151; }
+.btn-inspect:hover { background: #f3f4f6; }
+
 .btn-contact {
   width: 100%;
   padding: 13px;

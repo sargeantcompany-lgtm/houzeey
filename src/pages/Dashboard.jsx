@@ -48,7 +48,15 @@ export default function Dashboard() {
               <a href="#listings" className="dash-nav-item">My Listings</a>
               <a href="#payments" className="dash-nav-item">Payments</a>
               <Link to="/messages" className="dash-nav-item">Messages</Link>
-              <a href="#profile" className="dash-nav-item">Profile settings</a>
+              <Link to="/offers" className="dash-nav-item">My Offers</Link>
+              <Link to="/verify-identity" className="dash-nav-item">Verify Identity</Link>
+              {session?.role === 'tenant' || session?.role === 'renter'
+                ? null
+                : null}
+              {session?.is_admin && <>
+                <Link to="/admin" className="dash-nav-item dash-nav-admin">Admin Panel</Link>
+                <Link to="/marketing" className="dash-nav-item dash-nav-admin">Marketing</Link>
+              </>}
             </nav>
           </aside>
 

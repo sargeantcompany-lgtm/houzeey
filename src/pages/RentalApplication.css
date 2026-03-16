@@ -1,0 +1,49 @@
+.rental-app-page { padding: 40px 0; min-height: 70vh; }
+
+.back-btn { background: none; border: none; color: var(--green); font-size: 0.9rem; cursor: pointer; padding: 0; margin-bottom: 16px; display: block; }
+
+.app-header { margin-bottom: 32px; }
+.app-header h1 { font-size: 1.75rem; margin-bottom: 12px; }
+.app-listing-info { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; background: #f9fafb; border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; }
+.app-listing-info strong { font-size: 1rem; }
+.app-listing-info span { color: var(--text-secondary); font-size: 0.875rem; }
+.app-price { color: var(--green); font-weight: 700; font-size: 1rem !important; }
+
+.app-form { max-width: 780px; }
+
+.app-section { background: #fff; border: 1px solid var(--border); border-radius: 16px; padding: 28px; margin-bottom: 20px; }
+.app-section h2 { font-size: 1.1rem; margin-bottom: 20px; }
+.app-section h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 12px; color: var(--text-secondary); }
+
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.form-group { margin-bottom: 14px; }
+.form-group label { display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 6px; }
+.form-group input, .form-group select, .form-group textarea {
+  width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: var(--radius); font-size: 0.9rem; font-family: inherit;
+}
+.form-group textarea { resize: vertical; }
+
+.ref-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+
+.checkbox-label { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; cursor: pointer; }
+
+.field-hint { color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 10px; }
+.file-chosen { font-size: 0.8rem; color: var(--green); margin-top: 6px; display: block; }
+
+.btn-primary { padding: 13px 20px; background: var(--green); color: #fff; border: none; border-radius: var(--radius); font-size: 1rem; font-weight: 600; cursor: pointer; }
+.btn-primary.btn-full { width: 100%; }
+.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.error-msg { background: #fef2f2; border: 1px solid #fecaca; color: #dc2626; padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; font-size: 0.875rem; }
+.app-privacy { font-size: 0.8rem; color: var(--text-secondary); text-align: center; margin-top: 16px; }
+
+.app-success { text-align: center; padding: 80px 20px; }
+.success-icon { font-size: 4rem; margin-bottom: 20px; }
+.app-success h1 { margin-bottom: 16px; }
+.app-success p { color: var(--text-secondary); max-width: 500px; margin: 0 auto 28px; }
+
+.loading-text { padding: 48px 0; text-align: center; color: var(--text-secondary); }
+
+@media (max-width: 600px) {
+  .form-row, .ref-grid { grid-template-columns: 1fr; }
+}

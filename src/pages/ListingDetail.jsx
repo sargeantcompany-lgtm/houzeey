@@ -117,9 +117,18 @@ export default function ListingDetail() {
               <h1>{listing.title}</h1>
               <p className="detail-address">📍 {listing.address}, {listing.suburb} {listing.state} {listing.postcode}</p>
 
-              <button className="btn-contact" onClick={() => setShowContact(o => !o)}>
-                {showContact ? 'Hide contact form' : 'Contact seller'}
-              </button>
+              <div className="listing-action-btns">
+                <button className="btn-contact" onClick={() => setShowContact(o => !o)}>
+                  {showContact ? 'Hide contact' : 'Contact owner'}
+                </button>
+                {listing.type === 'sale' && isLoggedIn() && getSession()?.id !== listing.user_id && (
+                  <Link to={`/offers/${listing.id}`} className="btn-offer">Make an Offer</Link>
+                )}
+                {listing.type === 'rent' && isLoggedIn() && getSession()?.id !== listing.user_id && (
+                  <Link to={`/apply/${listing.id}`} className="btn-apply">Apply to Rent</Link>
+                )}
+                <Link to={`/inspections/${listing.id}`} className="btn-inspect">Book Inspection</Link>
+              </div>
 
               {showContact && (
                 sent ? (
