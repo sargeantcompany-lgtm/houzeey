@@ -27,11 +27,6 @@ export default function Navbar() {
           <NavLink to="/buy" className={navLinkClass} onClick={() => setMenuOpen(false)}>Buy</NavLink>
           <NavLink to="/rent" className={navLinkClass} onClick={() => setMenuOpen(false)}>Rent</NavLink>
           <NavLink to="/sell" className={navLinkClass} onClick={() => setMenuOpen(false)}>Sell</NavLink>
-          <NavLink to="/marketplace" className={navLinkClass} onClick={() => setMenuOpen(false)}>Marketplace</NavLink>
-          <NavLink to="/messages" className={navLinkClass} onClick={() => setMenuOpen(false)}>Messages</NavLink>
-          {session && (
-            <NavLink to="/payments" className={navLinkClass} onClick={() => setMenuOpen(false)}>Payments</NavLink>
-          )}
         </nav>
 
         <div className="navbar-actions">
