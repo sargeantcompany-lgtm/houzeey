@@ -9,6 +9,16 @@ import { sendEmail } from '../email.js'
 
 const router = Router()
 
+// Features a seller can tick on the listing form (shown as a tick list on the property page).
+const LISTING_FEATURES = new Set([
+  'Air conditioning', 'Built-in wardrobes', 'Dishwasher', 'Solar panels', 'Swimming pool',
+  'Garden', 'Balcony', 'Study', 'Ensuite', 'Waterfront',
+])
+function parseFeatures(value) {
+  const list = Array.isArray(value) ? value : String(value || '').split(',')
+  return [...new Set(list.map(v => String(v).trim()).filter(v => LISTING_FEATURES.has(v)))]
+}
+
 function buildImageUrl(req, imageId) {
   return `${req.protocol}://${req.get('host')}/api/images/${imageId}`
 }
@@ -61,7 +71,7 @@ router.get('/', optionalAuth, async (req, res) => {
     return res.status(400).json({ error: 'Minimum land size cannot exceed maximum land size.' })
   }
 
-  const conditions = ["l.status = 'active'", "l.type = 'sale'", "u.role IN ('buyer', 'seller')", "u.verified = TRUE", "sr.status = 'approved'"]
+  const conditions = ["l.status IN ('active', 'under_offer')", "l.type = 'sale'", "u.role IN ('buyer', 'seller')", "u.verified = TRUE", "sr.status = 'approved'"]
   const params = []
   let p = 1
 
@@ -176,7 +186,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
         WHERE listing_id = l.id ORDER BY created_at DESC LIMIT 1
       ) sr ON TRUE
       WHERE l.id = $1 AND l.type = 'sale' AND u.role IN ('buyer', 'seller') AND u.verified = TRUE
-        AND (l.user_id = $2 OR (l.status = 'active' AND sr.status = 'approved'))
+        AND (l.user_id = $2 OR (l.status IN ('active', 'under_offer') AND sr.status = 'approved'))
     `, [req.params.id, req.user?.id || null])
 
     if (result.rows.length === 0) return res.status(404).json({ error: 'Listing not found' })
@@ -258,13 +268,13 @@ router.post('/', requireAuth, upload.array('images', 20), [
     const result = await client.query(`
       INSERT INTO listings
         (user_id, type, property_type, title, address, suburb, state, postcode,
-         beds, baths, cars, land_size, description, price, price_display, price_max, status)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,'pending_review')
+         beds, baths, cars, land_size, description, price, price_display, price_max, features, status)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,'pending_review')
       RETURNING *
     `, [
       req.user.id, type, property_type, title, address, suburb, state, postcode,
       beds || null, baths || null, cars || null, land_size || null,
-      description, price, price_display || 'exact', price_max || null,
+      description, price, price_display || 'exact', price_max || null, parseFeatures(req.body.features),
     ])
 
     listing = result.rows[0]
