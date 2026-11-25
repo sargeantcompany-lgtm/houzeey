@@ -21,6 +21,13 @@ function getTransport() {
 }
 
 export async function sendEmail({ to, subject, html, text }) {
+  // Local development without SMTP: log the email (including any links) instead of failing.
+  // Production still fails so nothing is silently skipped.
+  if (!isEmailConfigured() && process.env.NODE_ENV !== 'production') {
+    console.log(`[email not sent — SMTP not configured]\nTo: ${to}\nSubject: ${subject}\n${text || html}\n`)
+    return
+  }
+
   const transport = getTransport()
 
   await transport.sendMail({

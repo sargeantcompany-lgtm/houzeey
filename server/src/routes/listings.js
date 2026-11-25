@@ -34,7 +34,7 @@ function parsePriceQuery(value) {
 
 // GET /api/listings — browse with filters
 router.get('/', optionalAuth, async (req, res) => {
-  const { type, suburb, state, beds, min_price, max_price, property_type, sort, limit = 20, offset = 0 } = req.query
+  const { type, suburb, state, beds, min_price, max_price, property_type, sort, limit, offset } = req.query
   const bedFilter = parseIntegerQuery(beds, null, 100)
   const bathFilter = parseIntegerQuery(req.query.baths, null, 100)
   const carFilter = parseIntegerQuery(req.query.cars, null, 100)

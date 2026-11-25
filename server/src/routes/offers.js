@@ -120,7 +120,11 @@ router.post('/', requireAuth, async (req, res) => {
   try {
     await client.query('BEGIN')
 
-    const listing = await client.query('SELECT user_id FROM listings WHERE id = $1', [listing_id])
+    // Only published listings can receive offers (not ones awaiting solicitor review, sold, etc.)
+    const listing = await client.query(
+      "SELECT user_id FROM listings WHERE id = $1 AND status = 'active' AND type = 'sale'",
+      [listing_id]
+    )
     if (listing.rows.length === 0) {
       await client.query('ROLLBACK')
       return res.status(404).json({ error: 'Listing not found' })
