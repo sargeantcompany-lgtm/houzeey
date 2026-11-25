@@ -1,8 +1,82 @@
 import { Router } from 'express'
 import pool from '../db.js'
+import { notify } from '../notify.js'
+import { sendEmail } from '../email.js'
 import { requireAuth } from '../middleware/auth.js'
 
 const router = Router()
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
+}
+
+function siteUrl() {
+  return String(process.env.CLIENT_URL || 'http://localhost:5173').split(',')[0].trim().replace(/\/$/, '')
+}
+
+// All buyer/seller messaging stays inside Houzeey. After each message:
+//  - each recipient gets an in-app notification (bell) linking to Messages
+//  - the site owner gets an email copy of the full message (MESSAGE_ALERT_EMAIL,
+//    falling back to ADMIN_EMAIL). Failures are logged, never block sending.
+async function alertNewMessage(conversationId, senderId, content) {
+  try {
+    const info = await pool.query(`
+      SELECT s.name AS sender_name, s.email AS sender_email,
+        l.id AS listing_id, l.title AS listing_title, l.address, l.suburb, l.state
+      FROM conversations c
+      JOIN users s ON s.id = $2
+      LEFT JOIN listings l ON l.id = c.listing_id
+      WHERE c.id = $1
+    `, [conversationId, senderId])
+    const recipients = await pool.query(`
+      SELECT u.id, u.name, u.email FROM conversation_participants cp
+      JOIN users u ON u.id = cp.user_id
+      WHERE cp.conversation_id = $1 AND cp.user_id <> $2
+    `, [conversationId, senderId])
+    const row = info.rows[0]
+    if (!row) return
+
+    const property = row.listing_title
+      ? `${row.listing_title}${row.address ? ` (${row.address}, ${row.suburb} ${row.state})` : ''}`
+      : 'a general enquiry'
+    const preview = content.length > 140 ? content.slice(0, 137) + '…' : content
+
+    await Promise.all(recipients.rows.map(r => notify(r.id, {
+      type: 'message',
+      title: `New message from ${row.sender_name}`,
+      body: preview,
+      link: '/messages',
+    })))
+
+    const ownerEmail = process.env.MESSAGE_ALERT_EMAIL || process.env.ADMIN_EMAIL
+    if (!ownerEmail) return
+    const to = recipients.rows.map(r => `${r.name} <${r.email}>`).join(', ')
+    const listingLink = row.listing_id ? `${siteUrl()}/listing/${row.listing_id}` : siteUrl()
+    await sendEmail({
+      to: ownerEmail,
+      subject: `Houzeey message: ${row.sender_name} → ${recipients.rows.map(r => r.name).join(', ')} about ${row.listing_title || 'an enquiry'}`,
+      text: `From: ${row.sender_name} <${row.sender_email}>
+To: ${to}
+Property: ${property}
+
+${content}
+
+View listing: ${listingLink}
+`,
+      html: `<div style="font-family:Arial,sans-serif;max-width:560px">
+        <h2 style="color:#1b6570;margin:0 0 12px">New Houzeey message</h2>
+        <p style="margin:0 0 4px"><strong>From:</strong> ${escapeHtml(row.sender_name)} &lt;${escapeHtml(row.sender_email)}&gt;</p>
+        <p style="margin:0 0 4px"><strong>To:</strong> ${escapeHtml(to)}</p>
+        <p style="margin:0 0 16px"><strong>Property:</strong> ${escapeHtml(property)}</p>
+        <div style="white-space:pre-wrap;background:#f4f7f7;border-radius:8px;padding:14px">${escapeHtml(content)}</div>
+        <p style="margin:18px 0"><a href="${listingLink}" style="background:#1b6570;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">View listing on Houzeey</a></p>
+        <p style="color:#888;font-size:12px">Messages stay inside Houzeey. Buyers and sellers reply in the app.</p>
+      </div>`,
+    })
+  } catch (err) {
+    console.error('Message alert failed:', err.message)
+  }
+}
 
 // GET /api/conversations — list all conversations for current user
 router.get('/', requireAuth, async (req, res) => {
@@ -97,6 +171,7 @@ router.post('/', requireAuth, async (req, res) => {
 
     await client.query('COMMIT')
     res.status(201).json({ conversation_id: conversationId, message: msg.rows[0] })
+    alertNewMessage(conversationId, req.user.id, message)
   } catch (err) {
     await client.query('ROLLBACK')
     console.error(err)
@@ -157,6 +232,7 @@ router.post('/:id/messages', requireAuth, async (req, res) => {
     await pool.query('UPDATE conversations SET updated_at = NOW() WHERE id = $1', [req.params.id])
 
     res.status(201).json(result.rows[0])
+    alertNewMessage(req.params.id, req.user.id, content.trim())
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Failed to send message' })

@@ -15,6 +15,7 @@ Never commit `.env`, `.env.local`, bucket credentials, or Railway variable value
 | `DATABASE_URL` | API, worker | PostgreSQL connection string |
 | `JWT_SECRET` | API | Signs Houzeey authentication tokens |
 | `ADMIN_EMAIL` | API | Grants admin access to the matching account when it registers |
+| `MESSAGE_ALERT_EMAIL` | API | Receives an email copy of every buyer/seller message (falls back to `ADMIN_EMAIL`). Messages themselves stay inside Houzeey. |
 | `PORT` | API | HTTP port; Railway supplies this in production |
 | `CLIENT_URL` | API | Frontend origin used in email links and API CORS |
 | `REDIS_URL` | API, worker | BullMQ queue connection |
