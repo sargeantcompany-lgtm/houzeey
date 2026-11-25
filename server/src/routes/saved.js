@@ -20,7 +20,7 @@ router.get('/', requireAuth, async (req, res) => {
         SELECT status FROM solicitor_reviews
         WHERE listing_id = l.id ORDER BY created_at DESC LIMIT 1
       ) sr ON TRUE
-      WHERE sl.user_id = $1 AND l.type = 'sale' AND l.status = 'active'
+      WHERE sl.user_id = $1 AND l.type = 'sale' AND l.status IN ('active', 'under_offer')
         AND u.role IN ('buyer', 'seller') AND u.verified = TRUE AND sr.status = 'approved'
       ORDER BY sl.created_at DESC
     `, [req.user.id])
@@ -42,7 +42,7 @@ router.post('/:listing_id', requireAuth, async (req, res) => {
         SELECT status FROM solicitor_reviews
         WHERE listing_id = l.id ORDER BY created_at DESC LIMIT 1
       ) sr ON TRUE
-      WHERE l.id = $1 AND l.type = 'sale' AND l.status = 'active'
+      WHERE l.id = $1 AND l.type = 'sale' AND l.status IN ('active', 'under_offer')
         AND u.role IN ('buyer', 'seller') AND u.verified = TRUE AND sr.status = 'approved'
     `, [req.params.listing_id])
     if (!listing.rowCount) return res.status(404).json({ error: 'Published private sale listing not found.' })

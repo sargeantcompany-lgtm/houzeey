@@ -1,36 +1,29 @@
-import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import MediaCapture from '../components/MediaCapture/MediaCapture'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 import { getVideoMimeType, MAX_VIDEO_UPLOAD_BYTES } from '../videoUpload'
-import './Sell.css'
+import { ListingCard, typeLabel } from '../craft/ui'
 
-const STEPS = ['Property details', 'Photos', 'Pricing', 'Legal review', 'Review']
+const STEPS = ['Address & details', 'Photos & video', 'Price', 'Your solicitor', 'Review']
+const STATES = ['NSW', 'VIC', 'QLD', 'WA', 'SA', 'TAS', 'ACT', 'NT']
+const FEATURES = ['Air conditioning', 'Built-in wardrobes', 'Dishwasher', 'Solar panels', 'Swimming pool', 'Garden', 'Balcony', 'Study', 'Ensuite', 'Waterfront']
+const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+const MAX_PHOTOS = 20
 
 export default function Sell() {
+  const navigate = useNavigate()
+  const [params] = useSearchParams()
+  const videoFirst = params.get('step') === 'media'
   const [step, setStep] = useState(0)
-  const [mediaItems, setMediaItems] = useState([])
+  const [photos, setPhotos] = useState([])
+  const [video, setVideo] = useState(null)
   const [createdListingId, setCreatedListingId] = useState(null)
   const [form, setForm] = useState({
-    address: '',
-    suburb: '',
-    state: 'NSW',
-    postcode: '',
-    propertyType: 'house',
-    beds: '',
-    baths: '',
-    cars: '',
-    size: '',
-    description: '',
-    price: '',
-    priceMax: '',
-    priceDisplay: 'exact',
-    solicitor_name: '',
-    solicitor_firm: '',
-    solicitor_email: '',
-    solicitor_phone: '',
-    solicitor_registration_number: '',
-    solicitor_state: 'NSW',
+    address: '', suburb: '', state: 'NSW', postcode: '', propertyType: 'house',
+    beds: '3', baths: '2', cars: '1', size: '', headline: '', description: '',
+    price: '', priceMax: '', priceDisplay: 'exact', features: [],
+    solicitor_name: '', solicitor_firm: '', solicitor_email: '', solicitor_phone: '',
+    solicitor_registration_number: '', solicitor_state: 'NSW', confirm: false,
   })
   const [submitting, setSubmitting] = useState(false)
   const [uploadMessage, setUploadMessage] = useState('')
@@ -38,7 +31,6 @@ export default function Sell() {
   const [error, setError] = useState('')
   const [identityVerified, setIdentityVerified] = useState(false)
   const [checkingIdentity, setCheckingIdentity] = useState(true)
-  const navigate = useNavigate()
 
   useEffect(() => {
     api.auth.me()
@@ -46,392 +38,282 @@ export default function Sell() {
       .catch(() => setIdentityVerified(false))
       .finally(() => setCheckingIdentity(false))
   }, [])
+  useEffect(() => () => { photos.forEach(p => URL.revokeObjectURL(p.url)); if (video) URL.revokeObjectURL(video.url) }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  function handleChange(e) {
-    setForm(f => ({ ...f, [e.target.name]: e.target.value }))
+  const set = e => {
+    const { name, value, type, checked } = e.target
+    setForm(f => ({ ...f, [name]: type === 'checkbox' ? checked : value }))
+  }
+  const toggleFeature = feature => setForm(f => ({ ...f, features: f.features.includes(feature) ? f.features.filter(x => x !== feature) : [...f.features, feature] }))
+
+  function addPhotos(files) {
+    const list = Array.from(files || [])
+    const ok = list.filter(f => PHOTO_TYPES.includes(f.type))
+    const room = MAX_PHOTOS - photos.length
+    if (ok.length < list.length) setError('Some files were skipped. Use JPEG, PNG or WebP photos (on iPhone, choose "Most Compatible" in Camera settings).')
+    else if (ok.length > room) setError(`You can add up to ${MAX_PHOTOS} photos.`)
+    else setError('')
+    setPhotos(p => [...p, ...ok.slice(0, Math.max(0, room)).map(file => ({ file, url: URL.createObjectURL(file) }))])
+  }
+  function removePhoto(i) { setPhotos(p => { URL.revokeObjectURL(p[i].url); return p.filter((_, k) => k !== i) }) }
+  function makeCover(i) { setPhotos(p => [p[i], ...p.filter((_, k) => k !== i)]) }
+  function pickVideo(file) {
+    if (!file) return
+    if (!getVideoMimeType(file)) { setError('Choose an MP4, MOV, M4V or WebM video.'); return }
+    if (file.size > MAX_VIDEO_UPLOAD_BYTES) { setError('Choose a video smaller than 512 MB.'); return }
+    if (video) URL.revokeObjectURL(video.url)
+    setVideo({ file, url: URL.createObjectURL(file) }); setError('')
   }
 
-  function addCapturedMedia(item) {
-    if (item.type === 'video' && mediaItems.some(media => media.type === 'video')) {
-      URL.revokeObjectURL(item.url)
-      setError('Only one video can be added to a listing.')
-      return
+  const autoTitle = `${form.beds && !['land', 'rural'].includes(form.propertyType) ? `${form.beds} bedroom ` : ''}${typeLabel(form.propertyType).toLowerCase()} in ${form.suburb || 'your suburb'}`
+  const preview = useMemo(() => ({
+    id: 'preview', address: form.address || 'Your street address', suburb: form.suburb || 'Suburb', state: form.state, postcode: form.postcode,
+    property_type: form.propertyType, beds: form.beds, baths: form.baths, cars: form.cars, land_size: form.size,
+    price: form.price, price_max: form.priceMax, price_display: form.priceDisplay, status: 'active',
+    primary_image: photos[0]?.url, seller_name: 'you',
+  }), [form, photos])
+
+  function validate() {
+    if (step === 0 && (!form.address.trim() || !form.suburb.trim() || !/^\d{4}$/.test(form.postcode.trim()))) return 'Enter the street address, suburb and a 4-digit postcode.'
+    if (step === 2) {
+      if (form.priceDisplay !== 'contact' && !(Number(form.price) > 0)) return 'Enter an asking price, or choose "Contact owner".'
+      if (form.priceDisplay === 'range' && !(Number(form.priceMax) > Number(form.price))) return 'The top of your price range must be higher than the bottom.'
+      if (form.description.trim().length < 40) return 'Describe your home in at least a couple of sentences (40 characters).'
     }
-    if (item.type === 'video' && item.blob.size > MAX_VIDEO_UPLOAD_BYTES) {
-      URL.revokeObjectURL(item.url)
-      setError('Choose a video smaller than 512 MB.')
-      return
+    if (step === 3 && (!form.solicitor_name.trim() || !form.solicitor_firm.trim() || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.solicitor_email.trim()) || !form.solicitor_registration_number.trim())) {
+      return "Add your solicitor or conveyancer's name, firm, work email and registration number."
     }
-    setMediaItems(prev => [...prev, item])
-    setError('')
+    if (step === 4 && !form.confirm) return 'Confirm that you own the property or are authorised to sell it.'
+    return ''
   }
 
-  async function handleNext() {
-    if (step === 0 && (!form.address.trim() || !form.suburb.trim() || !form.postcode.trim())) {
-      setError('Enter the property address, suburb and postcode to continue.')
-      return
-    }
-
-    if (step === 2 && form.priceDisplay !== 'contact' && (!form.price || Number(form.price) <= 0)) {
-      setError('Enter a valid asking price or choose “Contact for price”.')
-      return
-    }
-    if (step === 2 && form.priceDisplay === 'range' && (!form.priceMax || Number(form.priceMax) <= Number(form.price))) {
-      setError('Enter a price ceiling greater than the minimum price.')
-      return
-    }
-
-    if (step === 3 && (
-      !form.solicitor_name.trim() ||
-      !form.solicitor_firm.trim() ||
-      !form.solicitor_email.trim() ||
-      !form.solicitor_registration_number.trim()
-    )) {
-      setError('Add your solicitor or conveyancer’s contact and registration details.')
-      return
-    }
-
-    if (step < STEPS.length - 1) {
-      setError('')
-      setStep(s => s + 1)
-      return
-    }
-
-    const videoItems = mediaItems.filter(item => item.type === 'video')
-    if (step === STEPS.length - 1 && videoItems.length > 1) {
-      setError('Only one video can be added to a listing.')
-      return
-    }
-    if (step === STEPS.length - 1 && videoItems[0]) {
-      if (videoItems[0].blob.size > MAX_VIDEO_UPLOAD_BYTES) {
-        setError('Choose a video smaller than 512 MB.')
-        return
-      }
-      if (!getVideoMimeType(videoItems[0].blob)) {
-        setError('Choose an MP4, MOV, M4V, or WebM video.')
-        return
-      }
-    }
-
-    // Final step — create the listing, then upload any video directly to storage.
-    setSubmitting(true)
+  function goNext() {
+    const problem = validate()
+    if (problem) { setError(problem); return }
     setError('')
+    if (step < STEPS.length - 1) { setStep(s => s + 1); window.scrollTo(0, 0); return }
+    submit()
+  }
+
+  async function submit() {
+    setSubmitting(true); setError('')
     let listingCreated = Boolean(createdListingId)
     try {
       let listingId = createdListingId
       if (!listingId) {
-        const formData = new FormData()
-        formData.append('type', 'sale')
-        formData.append('property_type', form.propertyType)
-        formData.append('title', `${form.beds ? form.beds + ' Bed ' : ''}${form.propertyType.charAt(0).toUpperCase() + form.propertyType.slice(1)}, ${form.suburb}`)
-        formData.append('address', form.address)
-        formData.append('suburb', form.suburb)
-        formData.append('state', form.state)
-        formData.append('postcode', form.postcode)
-        if (form.beds) formData.append('beds', form.beds)
-        if (form.baths) formData.append('baths', form.baths)
-        if (form.cars) formData.append('cars', form.cars)
-        if (form.size) formData.append('land_size', form.size)
-        formData.append('description', form.description)
-        formData.append('price', form.price || '0')
-        formData.append('price_display', form.priceDisplay)
-        if (form.priceMax) formData.append('price_max', form.priceMax)
-        formData.append('solicitor_name', form.solicitor_name)
-        formData.append('solicitor_firm', form.solicitor_firm)
-        formData.append('solicitor_email', form.solicitor_email)
-        formData.append('solicitor_phone', form.solicitor_phone)
-        formData.append('solicitor_registration_number', form.solicitor_registration_number)
-        formData.append('solicitor_state', form.solicitor_state)
-
-        mediaItems.filter(item => item.type === 'photo' && item.blob).forEach(item => {
-          formData.append('images', item.blob, item.name || 'photo.jpg')
-        })
-
-        const listing = await api.listings.create(formData)
+        const fd = new FormData()
+        fd.append('type', 'sale')
+        fd.append('property_type', form.propertyType)
+        fd.append('title', (form.headline.trim() || autoTitle).slice(0, 120))
+        fd.append('address', form.address.trim())
+        fd.append('suburb', form.suburb.trim())
+        fd.append('state', form.state)
+        fd.append('postcode', form.postcode.trim())
+        if (form.beds !== '') fd.append('beds', form.beds)
+        if (form.baths !== '') fd.append('baths', form.baths)
+        if (form.cars !== '') fd.append('cars', form.cars)
+        if (form.size) fd.append('land_size', form.size)
+        fd.append('description', form.description.trim())
+        fd.append('price', form.priceDisplay === 'contact' && !form.price ? '0' : form.price)
+        fd.append('price_display', form.priceDisplay)
+        if (form.priceDisplay === 'range') fd.append('price_max', form.priceMax)
+        form.features.forEach(f => fd.append('features', f))
+        for (const key of ['solicitor_name', 'solicitor_firm', 'solicitor_email', 'solicitor_phone', 'solicitor_registration_number', 'solicitor_state']) fd.append(key, form[key])
+        photos.forEach(p => fd.append('images', p.file, p.file.name || 'photo.jpg'))
+        setUploadMessage('Sending your listing…')
+        const listing = await api.listings.create(fd)
         listingId = listing.id
         listingCreated = true
         setCreatedListingId(listingId)
       }
-
-      const video = videoItems[0]
       if (video) {
-        const contentType = getVideoMimeType(video.blob)
+        const contentType = getVideoMimeType(video.file)
         setUploadProgress(0)
-        setUploadMessage('Preparing direct video upload…')
-        const upload = await api.videos.createUploadUrl(listingId, {
-          contentType,
-          fileSize: video.blob.size,
-        })
+        setUploadMessage('Preparing video upload…')
+        const upload = await api.videos.createUploadUrl(listingId, { contentType, fileSize: video.file.size })
         setUploadMessage('Uploading video…')
-        await api.videos.uploadDirect(upload.uploadUrl, video.blob, contentType, setUploadProgress)
+        await api.videos.uploadDirect(upload.uploadUrl, video.file, contentType, setUploadProgress)
         setUploadMessage('Starting video processing…')
         await api.videos.completeUpload(upload.videoId)
       }
-
-      navigate('/dashboard', { state: { listingSubmitted: true } })
+      navigate('/my-listings', { state: { listingSubmitted: true } })
     } catch (err) {
       setError(listingCreated
-        ? `Your listing was submitted for solicitor review, but its video upload could not finish. ${err.message} Choose “Retry video upload” to try again.`
-        : err.message || 'Could not submit your listing for review. Please try again.')
+        ? `Your listing was sent for solicitor review, but the video upload didn't finish (${err.message}). Choose "Retry video upload".`
+        : err.message || 'Could not submit your listing. Please try again.')
       setSubmitting(false)
       setUploadMessage('')
     }
   }
 
+  const priceLine = form.priceDisplay === 'contact' ? 'Contact owner'
+    : form.priceDisplay === 'range' ? `$${Number(form.price || 0).toLocaleString('en-AU')} – $${Number(form.priceMax || 0).toLocaleString('en-AU')}`
+      : `$${Number(form.price || 0).toLocaleString('en-AU')}`
+
   return (
-    <div className="sell-page">
-      <div className="container">
-        <div className="sell-card">
-          <span className="sell-kicker">Private sale · No agency listings</span>
-          <h1>Sell your home directly</h1>
-          <p className="sell-intro">Create your listing and invite your solicitor or conveyancer to review the details before it can be published.</p>
-
-          {checkingIdentity ? (
-            <p className="sell-identity-pending">Checking your identity verification…</p>
-          ) : !identityVerified ? (
-            <div className="sell-identity-gate">
-              <strong>Verify your identity before listing</strong>
-              <p>We need to check who is creating a private sale listing. Identity verification is separate from proof of ownership and your solicitor’s review.</p>
-              <Link to="/verify-identity">Go to identity verification <span aria-hidden="true">→</span></Link>
-            </div>
-          ) : (
-          <>
-
-          {/* Progress */}
-          <div className="sell-progress">
-            {STEPS.map((s, i) => (
-              <div key={s} className={`progress-step ${i < step ? 'done' : ''} ${i === step ? 'active' : ''}`}>
-                <div className="progress-dot">{i < step ? '✓' : i + 1}</div>
-                <span>{s}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Step 0: Property details */}
-          {step === 0 && (
-            <div className="sell-step">
-              <div className="field-row">
-                <label>
-                  Property type
-                  <select name="propertyType" value={form.propertyType} onChange={handleChange}>
-                    {['House', 'Apartment', 'Townhouse', 'Unit', 'Land', 'Rural'].map(t => (
-                      <option key={t} value={t.toLowerCase()}>{t}</option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-
-              <label className="full">
-                Street address
-                <input type="text" name="address" value={form.address} onChange={handleChange} placeholder="12 Maple Street" />
-              </label>
-
-              <div className="field-row">
-                <label>
-                  Suburb
-                  <input type="text" name="suburb" value={form.suburb} onChange={handleChange} placeholder="Surry Hills" />
-                </label>
-                <label>
-                  State
-                  <select name="state" value={form.state} onChange={handleChange}>
-                    {['NSW','VIC','QLD','WA','SA','TAS','ACT','NT'].map(s => <option key={s}>{s}</option>)}
-                  </select>
-                </label>
-                <label>
-                  Postcode
-                  <input type="text" name="postcode" value={form.postcode} onChange={handleChange} placeholder="2010" maxLength={4} />
-                </label>
-              </div>
-
-              <div className="field-row">
-                <label>Bedrooms <input type="number" name="beds" value={form.beds} onChange={handleChange} min={0} /></label>
-                <label>Bathrooms <input type="number" name="baths" value={form.baths} onChange={handleChange} min={0} /></label>
-                <label>Car spaces <input type="number" name="cars" value={form.cars} onChange={handleChange} min={0} /></label>
-                <label>Land size (m²) <input type="number" name="size" value={form.size} onChange={handleChange} min={0} /></label>
-              </div>
-
-              <label className="full">
-                Description
-                <textarea name="description" value={form.description} onChange={handleChange} rows={5} placeholder="Describe your property..." />
-              </label>
-            </div>
-          )}
-
-          {/* Step 1: Photos & Video */}
-          {step === 1 && (
-            <div className="sell-step">
-              <p className="upload-tip">Use your camera to take photos and videos, or upload from your device. Add up to one video (MP4, MOV, M4V, or WebM; 512 MB maximum).</p>
-
-              <MediaCapture
-                onMediaCaptured={addCapturedMedia}
-                videoDisabled={mediaItems.some(item => item.type === 'video')}
-              />
-
-              <div className="upload-divider"><span>or upload files</span></div>
-
-              <label className="file-upload-label">
-                <input
-                  type="file"
-                  accept="image/*,video/*"
-                  multiple
-                  className="file-input-hidden"
-                  onChange={e => {
-                    const files = Array.from(e.target.files || [])
-                    let hasVideo = mediaItems.some(item => item.type === 'video')
-                    let rejectedVideo = false
-                    const additions = []
-                    files.forEach(file => {
-                      const isVideo = file.type.startsWith('video/') || Boolean(getVideoMimeType(file))
-                      if (isVideo) {
-                        if (hasVideo || !getVideoMimeType(file) || file.size > MAX_VIDEO_UPLOAD_BYTES) {
-                          rejectedVideo = true
-                          return
-                        }
-                        hasVideo = true
-                      }
-                      const url = URL.createObjectURL(file)
-                      additions.push({
-                        type: isVideo ? 'video' : 'photo',
-                        url,
-                        blob: file,
-                        name: file.name,
-                      })
-                    })
-                    if (additions.length) setMediaItems(prev => [...prev, ...additions])
-                    if (rejectedVideo) setError('Only one supported video up to 512 MB can be added to a listing.')
-                    else setError('')
-                    e.target.value = ''
-                  }}
-                />
-                <span>📁 Choose photos or videos from device</span>
-              </label>
-
-              {mediaItems.length > 0 && (
-                <div className="media-count">
-                  ✓ {mediaItems.filter(m => m.type === 'photo').length} photo{mediaItems.filter(m => m.type === 'photo').length !== 1 ? 's' : ''} &nbsp;·&nbsp;
-                  {mediaItems.filter(m => m.type === 'video').length} video{mediaItems.filter(m => m.type === 'video').length !== 1 ? 's' : ''} added
-                </div>
-              )}
-              {error && <p className="sell-error" role="alert">{error}</p>}
-            </div>
-          )}
-
-          {/* Step 2: Pricing */}
-          {step === 2 && (
-            <div className="sell-step">
-              <label className="full">
-                {form.priceDisplay === 'range' ? 'Minimum asking price ($)' : 'Asking price ($)'}
-                <input type="number" name="price" value={form.price} onChange={handleChange} placeholder="1450000" />
-              </label>
-
-              {form.priceDisplay === 'range' && (
-                <label className="full">
-                  Maximum asking price ($)
-                  <input type="number" name="priceMax" value={form.priceMax} onChange={handleChange} placeholder="1550000" />
-                </label>
-              )}
-
-              <label className="full">
-                Price display
-                <select name="priceDisplay" value={form.priceDisplay} onChange={handleChange}>
-                  <option value="exact">Show exact price</option>
-                  <option value="contact">Contact for price</option>
-                  <option value="range">Show price range</option>
-                </select>
-              </label>
-
-              <div className="price-preview">
-                <span>Preview:</span>
-                <strong>
-                  {form.priceDisplay === 'exact' && form.price
-                    ? `$${Number(form.price).toLocaleString()}`
-                    : form.priceDisplay === 'contact'
-                    ? 'Price on request'
-                    : form.price && form.priceMax
-                    ? `$${Number(form.price).toLocaleString()} – $${Number(form.priceMax).toLocaleString()}`
-                    : 'Enter a price range'}
-                </strong>
-              </div>
-            </div>
-          )}
-
-          {/* Step 3: Solicitor or conveyancer */}
-          {step === 3 && (
-            <div className="sell-step legal-review-step">
-              <div className="legal-review-intro">
-                <span className="legal-review-icon">§</span>
-                <div>
-                  <h3>Invite your solicitor or conveyancer</h3>
-                  <p>Your listing stays unpublished until your nominated legal representative reviews it through a secure email link.</p>
-                </div>
-              </div>
-              <div className="field-row">
-                <label>Legal representative’s full name<input name="solicitor_name" value={form.solicitor_name} onChange={handleChange} required /></label>
-                <label>Firm<input name="solicitor_firm" value={form.solicitor_firm} onChange={handleChange} required /></label>
-              </div>
-              <label className="full">Work email<input type="email" name="solicitor_email" value={form.solicitor_email} onChange={handleChange} placeholder="name@lawfirm.com.au" required /></label>
-              <div className="field-row">
-                <label>Phone (optional)<input type="tel" name="solicitor_phone" value={form.solicitor_phone} onChange={handleChange} /></label>
-                <label>Professional registration number<input name="solicitor_registration_number" value={form.solicitor_registration_number} onChange={handleChange} required /></label>
-                <label>Registration state or territory
-                  <select name="solicitor_state" value={form.solicitor_state} onChange={handleChange}>
-                    {['NSW','VIC','QLD','WA','SA','TAS','ACT','NT'].map(state => <option key={state}>{state}</option>)}
-                  </select>
-                </label>
-              </div>
-              <div className="legal-review-notice">
-                <strong>What happens next</strong>
-                <p>We email your legal representative a one-time review link. They can attest to the listing details or request corrections. The listing remains private until they approve it.</p>
-                <small>Houzeey records the response but does not independently verify professional registration. Do not include confidential legal advice in the listing.</small>
-              </div>
-              {error && <p className="sell-error" role="alert">{error}</p>}
-            </div>
-          )}
-
-          {/* Step 4: Review */}
-          {step === 4 && (
-            <div className="sell-step review-step">
-              <h3>Review your listing</h3>
-              <div className="review-grid">
-                <div className="review-item"><span>Type</span><strong>Private sale</strong></div>
-                <div className="review-item"><span>Property</span><strong>{form.propertyType}</strong></div>
-                <div className="review-item"><span>Address</span><strong>{form.address}, {form.suburb} {form.state} {form.postcode}</strong></div>
-                <div className="review-item"><span>Bedrooms</span><strong>{form.beds || '-'}</strong></div>
-                <div className="review-item"><span>Bathrooms</span><strong>{form.baths || '-'}</strong></div>
-                <div className="review-item"><span>Price</span><strong>{form.priceDisplay === 'contact' ? 'Price on request' : form.priceDisplay === 'range' ? `$${Number(form.price).toLocaleString()} – $${Number(form.priceMax).toLocaleString()}` : form.price ? `$${Number(form.price).toLocaleString()}` : '-'}</strong></div>
-                <div className="review-item"><span>Photos</span><strong>{mediaItems.filter(m => m.type === 'photo').length} added</strong></div>
-                <div className="review-item"><span>Solicitor</span><strong>{form.solicitor_name} · {form.solicitor_firm}</strong></div>
-              </div>
-              <p className="review-note">Submitting sends a review invitation to your legal representative. Your listing stays private until their attestation is received. You confirm that you are the owner or authorised to sell this property.</p>
-              {mediaItems.some(item => item.type === 'video') && (
-                <p className="review-note">The video will upload directly to private storage, then be converted to a vertical playback video and thumbnail. Processing is limited to 180 seconds.</p>
-              )}
-              {uploadMessage && (
-                <p className="upload-progress-message" role="status" aria-live="polite">
-                  {uploadMessage}{uploadMessage === 'Uploading video…' ? ` ${uploadProgress}%` : ''}
-                </p>
-              )}
-              {error && <p className="sell-error">{error}</p>}
-            </div>
-          )}
-
-          {/* Actions */}
-          <div className="sell-actions">
-            {step > 0 && (
-              <button className="btn-back" onClick={() => setStep(s => s - 1)} disabled={submitting || Boolean(createdListingId)}>Back</button>
-            )}
-            <button className="btn-next" onClick={handleNext} disabled={submitting}>
-              {submitting
-                ? uploadMessage === 'Uploading video…' ? `Uploading video… ${uploadProgress}%` : uploadMessage || 'Submitting…'
-                : createdListingId && step === STEPS.length - 1
-                  ? 'Retry video upload'
-                  : step === STEPS.length - 1 ? 'Send for solicitor review' : 'Next'}
-            </button>
-          </div>
-          </>
-          )}
+    <>
+      <section className="page-intro">
+        <div className="container">
+          <p className="eyebrow">List your property · Private sale</p>
+          <h1>Sell your property yourself</h1>
+          <p className="muted">Free to list. Your solicitor or conveyancer reviews the details, then your home goes live.</p>
         </div>
-      </div>
-    </div>
+      </section>
+
+      {checkingIdentity ? <div className="container" style={{ padding: '40px 24px' }}><p className="muted">Checking your account…</p></div> : !identityVerified ? (
+        <div className="container" style={{ padding: '40px 24px 64px', maxWidth: 720 }}>
+          <div className="how-negotiate">
+            <h2>First, verify your identity</h2>
+            <p>Every seller on Houzeey verifies their identity before listing. It only takes a few minutes and keeps buyers safe from fake listings.</p>
+            <div className="row-actions"><Link className="btn btn-primary" to="/verify-identity">Verify my identity</Link><Link className="btn btn-outline" to="/guides">How selling works</Link></div>
+          </div>
+        </div>
+      ) : (
+        <div className="container sell-layout">
+          <ol className="stepper" aria-label="Listing steps">
+            {STEPS.map((s, i) => (
+              <li key={s} className={`${i === step ? 'is-current' : ''} ${i < step ? 'is-done' : ''} ${videoFirst && i === 1 && step < 1 ? 'is-highlight' : ''}`}>
+                <span>{i < step ? '✓' : i + 1}</span>{s}
+              </li>
+            ))}
+          </ol>
+
+          <form className="sell-form" noValidate onSubmit={e => { e.preventDefault(); goNext() }}>
+            {videoFirst && step === 0 && <p className="video-callout"><strong>Posting a video tour?</strong> Fill in the address first, then add your video in step 2.</p>}
+
+            {step === 0 && (
+              <fieldset className="step">
+                <legend>Where is the property?</legend>
+                <div className="field-grid">
+                  <label className="field span-2"><span>Street address</span><input name="address" value={form.address} onChange={set} placeholder="e.g. 12 Banksia Street" autoComplete="street-address" required /></label>
+                  <label className="field"><span>Suburb</span><input name="suburb" value={form.suburb} onChange={set} autoComplete="address-level2" required /></label>
+                  <label className="field"><span>State</span><select name="state" value={form.state} onChange={set}>{STATES.map(s => <option key={s}>{s}</option>)}</select></label>
+                  <label className="field"><span>Postcode</span><input name="postcode" value={form.postcode} onChange={set} inputMode="numeric" maxLength={4} autoComplete="postal-code" required /></label>
+                  <label className="field"><span>Property type</span>
+                    <select name="propertyType" value={form.propertyType} onChange={set}>
+                      {['house', 'apartment', 'townhouse', 'unit', 'land', 'rural'].map(t => <option key={t} value={t}>{typeLabel(t)}</option>)}
+                    </select>
+                  </label>
+                  <label className="field"><span>Bedrooms</span><input name="beds" type="number" min="0" max="20" value={form.beds} onChange={set} /></label>
+                  <label className="field"><span>Bathrooms</span><input name="baths" type="number" min="0" max="20" value={form.baths} onChange={set} /></label>
+                  <label className="field"><span>Car spaces</span><input name="cars" type="number" min="0" max="20" value={form.cars} onChange={set} /></label>
+                  <label className="field"><span>Land size (m²)</span><input name="size" type="number" min="0" inputMode="numeric" value={form.size} onChange={set} /></label>
+                </div>
+                <fieldset className="checks checks-grid">
+                  <legend>Features</legend>
+                  {FEATURES.map(f => <label key={f}><input type="checkbox" checked={form.features.includes(f)} onChange={() => toggleFeature(f)} /> {f}</label>)}
+                </fieldset>
+              </fieldset>
+            )}
+
+            {step === 1 && (
+              <fieldset className="step">
+                <legend>Photos and video</legend>
+                <p className="muted">Add up to {MAX_PHOTOS} photos. The first one is the cover. Landscape photos look best. Without photos we&apos;ll show an illustration.</p>
+                <label className="dropzone" onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); addPhotos(e.dataTransfer.files) }}>
+                  <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={e => { addPhotos(e.target.files); e.target.value = '' }} />
+                  <svg width="36" height="36" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0-4 4m4-4 4 4M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  <strong>Choose photos</strong>
+                  <span className="muted">or drag them here</span>
+                </label>
+                {photos.length > 0 && (
+                  <ul className="photo-list">
+                    {photos.map((p, i) => (
+                      <li key={p.url}>
+                        <img src={p.url} alt={`Photo ${i + 1}`} />
+                        <button type="button" className="icon-btn remove" onClick={() => removePhoto(i)} aria-label={`Remove photo ${i + 1}`}>×</button>
+                        {i === 0 ? <span className="cover-tag">Cover</span> : <button type="button" className="mini" onClick={() => makeCover(i)}>Make cover</button>}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                <h3 className="video-title">Video tour <span className="muted">(optional, recommended)</span></h3>
+                <p className="muted">Walk buyers through your home in a short vertical video (under 2 minutes works best). It plays in the feed and in Tours, just like a reel.</p>
+                <div className="video-pick">
+                  <label className="btn btn-outline">
+                    <input type="file" accept="video/*" className="visually-hidden" onChange={e => { pickVideo(e.target.files?.[0]); e.target.value = '' }} />
+                    Upload a video
+                  </label>
+                  <label className="btn btn-outline record-btn">
+                    <input type="file" accept="video/*" capture="environment" className="visually-hidden" onChange={e => { pickVideo(e.target.files?.[0]); e.target.value = '' }} />
+                    Record with camera
+                  </label>
+                </div>
+                {video && (
+                  <div className="video-preview">
+                    <video src={video.url} controls playsInline muted />
+                    <div className="video-preview-info">
+                      <strong>{video.file.name}</strong>
+                      <span className="muted">{(video.file.size / 1048576).toFixed(1)} MB</span>
+                      <button type="button" className="btn btn-ghost btn-sm danger" onClick={() => { URL.revokeObjectURL(video.url); setVideo(null) }}>Remove video</button>
+                    </div>
+                  </div>
+                )}
+              </fieldset>
+            )}
+
+            {step === 2 && (
+              <fieldset className="step">
+                <legend>Price and description</legend>
+                <div className="field-grid">
+                  <label className="field"><span>{form.priceDisplay === 'range' ? 'Price from ($)' : 'Asking price ($)'}</span><input name="price" type="number" min="0" step="1" inputMode="numeric" value={form.price} onChange={set} /></label>
+                  <label className="field"><span>Price shown to buyers</span>
+                    <select name="priceDisplay" value={form.priceDisplay} onChange={set}>
+                      <option value="exact">Show the exact price</option>
+                      <option value="range">Show a price range</option>
+                      <option value="contact">&quot;Contact owner&quot;</option>
+                    </select>
+                  </label>
+                  {form.priceDisplay === 'range' && <label className="field"><span>Price to ($)</span><input name="priceMax" type="number" min="0" step="1" inputMode="numeric" value={form.priceMax} onChange={set} /></label>}
+                  <label className="field span-2"><span>Headline</span><input name="headline" value={form.headline} onChange={set} maxLength={80} placeholder="e.g. Sunny family home close to schools" /></label>
+                  <label className="field span-2"><span>Description</span><textarea name="description" rows={6} value={form.description} onChange={set} placeholder="Describe the layout, recent updates, the street and what's nearby." /></label>
+                </div>
+              </fieldset>
+            )}
+
+            {step === 3 && (
+              <fieldset className="step">
+                <legend>Your solicitor or conveyancer</legend>
+                <p className="muted">We email them a secure link to check your listing details. They also confirm they&apos;ve done your identity and anti-money-laundering (AML) checks and that the seller disclosure is prepared. Your listing goes live once they approve it.</p>
+                <div className="field-grid">
+                  <label className="field"><span>Full name</span><input name="solicitor_name" value={form.solicitor_name} onChange={set} /></label>
+                  <label className="field"><span>Firm</span><input name="solicitor_firm" value={form.solicitor_firm} onChange={set} /></label>
+                  <label className="field span-2"><span>Work email</span><input name="solicitor_email" type="email" value={form.solicitor_email} onChange={set} placeholder="name@lawfirm.com.au" /></label>
+                  <label className="field"><span>Phone (optional)</span><input name="solicitor_phone" type="tel" value={form.solicitor_phone} onChange={set} /></label>
+                  <label className="field"><span>Registration number</span><input name="solicitor_registration_number" value={form.solicitor_registration_number} onChange={set} /></label>
+                  <label className="field"><span>Registered in</span><select name="solicitor_state" value={form.solicitor_state} onChange={set}>{STATES.map(s => <option key={s}>{s}</option>)}</select></label>
+                </div>
+                <p className="muted small-print">Houzeey records your solicitor&apos;s response but doesn&apos;t independently verify their registration.</p>
+              </fieldset>
+            )}
+
+            {step === 4 && (
+              <fieldset className="step">
+                <legend>Check and send for review</legend>
+                <div className="sell-preview"><ListingCard listing={preview} saved={false} onToggleSave={() => {}} /></div>
+                <p className="muted" style={{ marginTop: 16 }}>
+                  <strong>{form.headline.trim() || autoTitle}</strong><br />
+                  {priceLine} · {photos.length} photo{photos.length === 1 ? '' : 's'}{video ? ' · video tour' : ''}{form.features.length ? ` · ${form.features.length} features` : ''}<br />
+                  Solicitor: {form.solicitor_name} · {form.solicitor_firm}
+                </p>
+                <label className="check-line"><input type="checkbox" name="confirm" checked={form.confirm} onChange={set} /> I own this property (or am authorised to sell it) and the details are accurate.</label>
+                {uploadMessage && <p className="offer-hint" role="status" aria-live="polite">{uploadMessage}{uploadMessage === 'Uploading video…' ? ` ${uploadProgress}%` : ''}</p>}
+              </fieldset>
+            )}
+
+            {error && <p className="form-error" role="alert">{error}</p>}
+            <div className="step-nav">
+              {step > 0 && <button type="button" className="btn btn-outline" onClick={() => { setError(''); setStep(s => s - 1) }} disabled={submitting || Boolean(createdListingId)}>Back</button>}
+              <button type="submit" className="btn btn-primary" disabled={submitting}>
+                {submitting ? (uploadMessage === 'Uploading video…' ? `Uploading video… ${uploadProgress}%` : uploadMessage || 'Sending…')
+                  : createdListingId ? 'Retry video upload'
+                    : step === STEPS.length - 1 ? 'Send for solicitor review' : 'Continue'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+    </>
   )
 }

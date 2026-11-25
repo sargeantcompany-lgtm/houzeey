@@ -23,6 +23,7 @@ import notificationRoutes from './routes/notifications.js'
 import supportRoutes from './routes/support.js'
 import solicitorReviewRoutes from './routes/solicitorReviews.js'
 import videoRoutes from './routes/videos.js'
+import socialRoutes from './routes/social.js'
 import { runMigrations } from './migrations.js'
 import { createDownloadUrl } from './services/videoStorage.js'
 import { isValidImageSignature } from './services/imageStorage.js'
@@ -468,6 +469,7 @@ app.use('/api/notifications', notificationRoutes)
 app.use('/api/support', supportRoutes)
 app.use('/api/solicitor-reviews', solicitorReviewRoutes)
 app.use('/api/videos', videoRoutes)
+app.use('/api/social', socialRoutes)
 
 // Serve images from DB
 app.get('/api/images/:id', async (req, res) => {

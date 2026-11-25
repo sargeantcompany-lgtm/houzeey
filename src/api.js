@@ -114,6 +114,15 @@ export const api = {
   },
 
   // Saved listings
+  social: {
+    feed: (params = {}) => get(`/api/social/feed?${new URLSearchParams(params)}`),
+    states: () => get('/api/social/states'),
+    like: (id) => post(`/api/social/listings/${id}/like`, {}),
+    unlike: (id) => del(`/api/social/listings/${id}/like`),
+    comments: (id) => get(`/api/social/listings/${id}/comments`),
+    comment: (id, body) => post(`/api/social/listings/${id}/comments`, { body }),
+  },
+
   saved: {
     list: () => get('/api/saved'),
     save: (listingId) => post(`/api/saved/${listingId}`),
@@ -162,6 +171,10 @@ export const api = {
     reject: (id) => post(`/api/offers/${id}/reject`, {}),
     withdraw: (id) => post(`/api/offers/${id}/withdraw`, {}),
     pdf: (id) => `${BASE}/api/offers/${id}/pdf`,
+    deal: (id) => get(`/api/offers/${id}/deal`),
+    setSolicitor: (id, side, data) => put(`/api/offers/${id}/solicitors/${side}`, data),
+    tick: (id, key, done) => put(`/api/offers/${id}/checklist/${key}`, { done }),
+    handover: (id) => post(`/api/offers/${id}/handover`, {}),
   },
 
   // Settlement

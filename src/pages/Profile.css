@@ -213,7 +213,7 @@
 
 .pf-row label { flex: 1; min-width: 180px; }
 
-label {
+.profile-page label {
   display: flex;
   flex-direction: column;
   gap: 5px;
@@ -222,9 +222,9 @@ label {
   color: var(--text-secondary);
 }
 
-label.full { width: 100%; margin-bottom: 12px; }
+.profile-page label.full { width: 100%; margin-bottom: 12px; }
 
-label input, label textarea, label select {
+.profile-page label input, .profile-page label textarea, .profile-page label select {
   padding: 9px 12px;
   border: 1.5px solid var(--border);
   border-radius: var(--radius-sm);
@@ -235,12 +235,12 @@ label input, label textarea, label select {
   font-family: inherit;
 }
 
-label input:focus, label textarea:focus {
+.profile-page label input:focus, .profile-page label textarea:focus {
   outline: none;
   border-color: var(--green);
 }
 
-label textarea { resize: vertical; }
+.profile-page label textarea { resize: vertical; }
 
 .pf-read-only {
   display: flex;

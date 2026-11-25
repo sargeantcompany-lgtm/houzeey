@@ -1,503 +1,361 @@
-import { useState, useEffect } from 'react'
-import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom'
+import { useCallback, useEffect, useState } from 'react'
+import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
-import { getSession } from '../auth'
-import './Offers.css'
+import { Cover, money, priceText, toast } from '../craft/ui'
 
-function fmt(amount) {
-  return `$${Number(amount).toLocaleString('en-AU')}`
+// Which document each state calls the seller disclosure, and its cooling-off period.
+const STATE_RULES = {
+  NSW: { disc: 'Contract with the prescribed disclosure documents attached', cool: '5 business days' },
+  VIC: { disc: 'Vendor statement (Section 32)', cool: '3 business days' },
+  QLD: { disc: 'Seller disclosure statement (Form 2)', cool: '5 business days' },
+  SA: { disc: 'Form 1 vendor statement', cool: '2 clear business days' },
+  WA: { disc: 'Title search and disclosure documents', cool: 'no statutory cooling-off' },
+  TAS: { disc: 'Title, planning and disclosure documents', cool: 'no statutory cooling-off' },
+  ACT: { disc: 'Required documents (including building and pest reports) with the contract', cool: '5 business days' },
+  NT: { disc: 'Contract disclosure documents (including building certification)', cool: '4 business days' },
 }
 
-function fmtDate(d) {
-  if (!d) return '—'
-  return new Date(d).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' })
+const fmtStamp = t => new Date(t).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
+const fmtDate = t => new Date(t).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
+
+function termsText(o) {
+  const parts = []
+  if (o.deposit_amount) parts.push(`${money(o.deposit_amount)} deposit`)
+  if (o.settlement_date) parts.push(`settle ${fmtDate(o.settlement_date)}`)
+  const conds = []
+  if (o.finance_clause) conds.push('finance')
+  if (o.building_inspection) conds.push('building & pest')
+  if (o.conditions) conds.push(o.conditions)
+  parts.push(conds.length ? `subject to ${conds.join(', ')}` : 'unconditional')
+  return parts.join(' · ')
 }
 
-const STATUS_BADGE = {
-  pending: { label: 'Pending', cls: 'badge-orange' },
-  countered: { label: 'Countered', cls: 'badge-blue' },
-  accepted: { label: 'Accepted', cls: 'badge-green' },
-  rejected: { label: 'Rejected', cls: 'badge-red' },
-  withdrawn: { label: 'Withdrawn', cls: 'badge-grey' },
+function checklistFor(o) {
+  const r = STATE_RULES[o.listing_state] || STATE_RULES.NSW
+  const items = [
+    { k: 'voi_s', t: 'Verification of identity (VOI) for the seller', who: "Seller's solicitor" },
+    { k: 'voi_b', t: 'Verification of identity (VOI) for the buyer', who: "Buyer's solicitor" },
+    { k: 'aml', t: 'Anti-money-laundering (AML/CTF) checks on both parties', who: 'Both solicitors' },
+    { k: 'disc', t: `${r.disc} (${o.listing_state || 'your state'})`, who: "Seller's solicitor" },
+    { k: 'contract', t: "Contract of sale prepared and sent to the buyer's solicitor", who: "Seller's solicitor" },
+    { k: 'review', t: 'Contract reviewed and the buyer advised', who: "Buyer's solicitor" },
+    { k: 'exchange', t: 'Contracts signed and exchanged', who: 'Both solicitors' },
+    { k: 'cooling', t: `Cooling-off period ended (${o.listing_state || ''}: ${r.cool})`, who: 'Buyer' },
+    { k: 'deposit', t: `Deposit${o.deposit_amount ? ` of ${money(o.deposit_amount)}` : ''} paid into the trust account`, who: 'Buyer' },
+  ]
+  if (o.finance_clause) items.push({ k: 'finance', t: 'Finance approved, condition satisfied', who: 'Buyer' })
+  if (o.building_inspection) items.push({ k: 'bp', t: 'Building and pest inspection done, condition satisfied', who: 'Buyer' })
+  items.push({ k: 'pexa', t: 'Settlement booked (PEXA electronic settlement)', who: 'Both solicitors' })
+  items.push({ k: 'settled', t: 'Settled: balance paid and keys handed over', who: 'Both solicitors' })
+  return items
 }
 
-// ————— Make Offer Form —————
-function MakeOfferForm({ listingId, onSuccess }) {
-  const [form, setForm] = useState({
-    offer_price: '', settlement_date: '', deposit_amount: '', deposit_due_days: 7,
-    finance_clause: false, finance_days: 21, building_inspection: false, building_days: 14,
-    inclusions: '', exclusions: '', conditions: '',
-  })
-  const [submitting, setSubmitting] = useState(false)
+async function downloadLetter(id) {
+  try {
+    const res = await fetch(api.offers.pdf(id), { headers: { Authorization: `Bearer ${localStorage.getItem('houzeey_token')}` } })
+    if (!res.ok) throw new Error()
+    const url = URL.createObjectURL(await res.blob())
+    const a = document.createElement('a')
+    a.href = url; a.download = 'houzeey-letter-of-offer.pdf'; a.click()
+    setTimeout(() => URL.revokeObjectURL(url), 2000)
+  } catch { toast('Could not download the letter of offer') }
+}
+
+function SolicitorCard({ side, mine, solicitor, onSave }) {
+  const [editing, setEditing] = useState(false)
+  const [form, setForm] = useState(() => ({ name: solicitor?.name || '', firm: solicitor?.firm || '', email: solicitor?.email || '', phone: solicitor?.phone || '', licence: solicitor?.licence || '' }))
   const [error, setError] = useState('')
+  const title = side === 'seller' ? "Seller's solicitor or conveyancer" : "Buyer's solicitor or conveyancer"
+  const showForm = mine && (!solicitor || editing)
+  const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }))
 
-  function set(field) {
-    return e => setForm(f => ({ ...f, [field]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }))
-  }
-
-  async function handleSubmit(e) {
+  async function submit(e) {
     e.preventDefault()
     setError('')
-    setSubmitting(true)
-    try {
-      const offer = await api.offers.submit({ ...form, listing_id: listingId })
-      onSuccess(offer)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setSubmitting(false)
-    }
+    try { await onSave(side, form); setEditing(false) } catch (err) { setError(err.message) }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="offer-form">
-      <h2>Make an Offer</h2>
-
-      <div className="form-row">
-        <div className="form-group">
-          <label>Offer Price (AUD) *</label>
-          <input type="number" value={form.offer_price} onChange={set('offer_price')} placeholder="e.g. 850000" min="1" step="1" inputMode="numeric" required />
-        </div>
-        <div className="form-group">
-          <label>Proposed Settlement Date</label>
-          <input type="date" value={form.settlement_date} onChange={set('settlement_date')} />
-        </div>
-      </div>
-
-      <div className="form-row">
-        <div className="form-group">
-          <label>Deposit Amount (AUD)</label>
-          <input type="number" value={form.deposit_amount} onChange={set('deposit_amount')} placeholder="e.g. 50000" />
-        </div>
-        <div className="form-group">
-          <label>Deposit Due (days after acceptance)</label>
-          <input type="number" value={form.deposit_due_days} onChange={set('deposit_due_days')} min="1" max="30" />
-        </div>
-      </div>
-
-      <div className="form-row clauses">
-        <label className="checkbox-label">
-          <input type="checkbox" checked={form.finance_clause} onChange={set('finance_clause')} />
-          Finance clause
-        </label>
-        {form.finance_clause && (
-          <div className="form-group inline">
-            <label>Finance days</label>
-            <input type="number" value={form.finance_days} onChange={set('finance_days')} min="1" max="90" />
-          </div>
-        )}
-      </div>
-
-      <div className="form-row clauses">
-        <label className="checkbox-label">
-          <input type="checkbox" checked={form.building_inspection} onChange={set('building_inspection')} />
-          Building & pest inspection clause
-        </label>
-        {form.building_inspection && (
-          <div className="form-group inline">
-            <label>Inspection days</label>
-            <input type="number" value={form.building_days} onChange={set('building_days')} min="1" max="90" />
-          </div>
-        )}
-      </div>
-
-      <div className="form-group">
-        <label>Inclusions (items included in sale)</label>
-        <input type="text" value={form.inclusions} onChange={set('inclusions')} placeholder="e.g. dishwasher, blinds, garden shed" />
-      </div>
-
-      <div className="form-group">
-        <label>Exclusions</label>
-        <input type="text" value={form.exclusions} onChange={set('exclusions')} placeholder="e.g. outdoor furniture" />
-      </div>
-
-      <div className="form-group">
-        <label>Special Conditions</label>
-        <textarea value={form.conditions} onChange={set('conditions')} rows={3} placeholder="Any special conditions…" />
-      </div>
-
-      {error && <div className="error-msg">{error}</div>}
-
-      <button type="submit" className="btn-primary btn-full" disabled={submitting}>
-        {submitting ? 'Submitting…' : 'Submit Offer'}
-      </button>
-    </form>
-  )
-}
-
-// ————— Offer Detail / Negotiation —————
-function OfferDetail({ offerId, currentUser }) {
-  const [offer, setOffer] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState('')
-  const [counter, setCounter] = useState({ offer_price: '', settlement_date: '', conditions: '', note: '' })
-  const [showCounter, setShowCounter] = useState(false)
-  const [acting, setActing] = useState(false)
-  const [error, setError] = useState('')
-
-  useEffect(() => {
-    let active = true
-    setLoading(true)
-    setLoadError('')
-    api.offers.get(offerId)
-      .then(data => { if (active) setOffer(data) })
-      .catch(err => { if (active) setLoadError(err.message || 'Could not load this offer.') })
-      .finally(() => { if (active) setLoading(false) })
-    return () => { active = false }
-  }, [offerId])
-
-  async function handleAction(action) {
-    setActing(true)
-    setError('')
-    try {
-      if (action === 'accept') await api.offers.accept(offerId)
-      else if (action === 'reject') await api.offers.reject(offerId)
-      else if (action === 'withdraw') await api.offers.withdraw(offerId)
-      const updated = await api.offers.get(offerId)
-      setOffer(updated)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setActing(false)
-    }
-  }
-
-  async function handleCounter(e) {
-    e.preventDefault()
-    setActing(true)
-    setError('')
-    try {
-      await api.offers.counter(offerId, counter)
-      const updated = await api.offers.get(offerId)
-      setOffer(updated)
-      setShowCounter(false)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setActing(false)
-    }
-  }
-
-  if (loading) return <p className="loading-text">Loading offer…</p>
-  if (!offer) return <p className="error-msg" role="alert">{loadError || 'Offer not found.'}</p>
-
-  const isSeller = offer.seller_id === currentUser?.id
-  const isBuyer = offer.buyer_id === currentUser?.id
-  const isActive = ['pending', 'countered'].includes(offer.status)
-  const currentOfferBy = offer.current_offer_by || 'buyer'
-  const canRespond = isSeller
-    ? currentOfferBy === 'buyer'
-    : isBuyer && currentOfferBy === 'seller'
-  const badge = STATUS_BADGE[offer.status] || {}
-
-  return (
-    <div className="offer-detail">
-      <div className="offer-detail-header">
-        <div>
-          <h2>{offer.listing_title}</h2>
-          <p className="offer-address">{offer.listing_address}</p>
-        </div>
-        <span className={`badge ${badge.cls}`}>{badge.label}</span>
-      </div>
-
-      <div className="offer-terms-grid">
-        <div className="offer-term"><span>Offer Price</span><strong>{fmt(offer.offer_price)}</strong></div>
-        <div className="offer-term"><span>Settlement</span><strong>{fmtDate(offer.settlement_date)}</strong></div>
-        <div className="offer-term"><span>Deposit</span><strong>{offer.deposit_amount ? fmt(offer.deposit_amount) : '—'}</strong></div>
-        <div className="offer-term"><span>Deposit due</span><strong>{offer.deposit_amount ? `${offer.deposit_due_days || 7} days after acceptance` : '—'}</strong></div>
-        <div className="offer-term"><span>Finance Clause</span><strong>{offer.finance_clause ? `Yes (${offer.finance_days} days)` : 'No'}</strong></div>
-        <div className="offer-term"><span>B&P Inspection</span><strong>{offer.building_inspection ? `Yes (${offer.building_days} days)` : 'No'}</strong></div>
-        <div className="offer-term"><span>Inclusions</span><strong>{offer.inclusions || '—'}</strong></div>
-        <div className="offer-term"><span>Exclusions</span><strong>{offer.exclusions || '—'}</strong></div>
-      </div>
-
-      {offer.conditions && (
-        <div className="offer-conditions">
-          <strong>Special Conditions:</strong>
-          <p>{offer.conditions}</p>
-        </div>
-      )}
-
-      {error && <div className="error-msg">{error}</div>}
-
-      {/* Actions */}
-      {isActive && (
-        <div className="offer-actions">
-          {canRespond && (
-            <>
-              <button className="btn-green" onClick={() => handleAction('accept')} disabled={acting}>Accept {fmt(offer.offer_price)}</button>
-              <button className="btn-outline" onClick={() => setShowCounter(!showCounter)} disabled={acting}>Counter Offer</button>
-              {isSeller && <button className="btn-danger" onClick={() => handleAction('reject')} disabled={acting}>Reject</button>}
-            </>
-          )}
-          {!canRespond && (
-            <p className="offer-waiting" role="status">Waiting for the {isBuyer ? 'seller' : 'buyer'} to respond to the latest offer.</p>
-          )}
-          {isBuyer && (
-            <button className="btn-danger" onClick={() => handleAction('withdraw')} disabled={acting}>Withdraw Offer</button>
-          )}
-        </div>
-      )}
-
-      {/* Counter form */}
-      {showCounter && canRespond && (
-        <form onSubmit={handleCounter} className="counter-form">
-          <h3>Counter Offer</h3>
-          <div className="form-row">
-            <div className="form-group">
-              <label>Counter Price</label>
-              <input type="number" value={counter.offer_price} onChange={e => setCounter(f => ({ ...f, offer_price: e.target.value }))} placeholder={offer.offer_price} />
-            </div>
-            <div className="form-group">
-              <label>New Settlement Date</label>
-              <input type="date" value={counter.settlement_date} onChange={e => setCounter(f => ({ ...f, settlement_date: e.target.value }))} />
-            </div>
-          </div>
-          <div className="form-group">
-            <label>Message to the other party</label>
-            <textarea value={counter.note} onChange={e => setCounter(f => ({ ...f, note: e.target.value }))} rows={2} placeholder="Explain your counter…" />
-          </div>
-          <button type="submit" className="btn-green" disabled={acting}>{acting ? 'Sending…' : 'Send Counter Offer'}</button>
+    <div className={`sol-card ${solicitor ? 'is-set' : ''}`}>
+      <h4>{title}{mine && <span className="you-tag">You</span>}</h4>
+      {showForm ? (
+        <form className="sol-form" onSubmit={submit} noValidate>
+          <label className="field"><span>Name</span><input value={form.name} onChange={set('name')} required /></label>
+          <label className="field"><span>Firm</span><input value={form.firm} onChange={set('firm')} /></label>
+          <label className="field"><span>Email</span><input type="email" value={form.email} onChange={set('email')} required /></label>
+          <label className="field"><span>Phone</span><input type="tel" value={form.phone} onChange={set('phone')} /></label>
+          <label className="field"><span>Licence or registration no. (optional)</span><input value={form.licence} onChange={set('licence')} /></label>
+          {error && <p className="form-error" role="alert">{error}</p>}
+          <div className="row-actions"><button className="btn btn-primary btn-sm" type="submit">Save solicitor</button>{solicitor && <button className="btn btn-ghost btn-sm" type="button" onClick={() => setEditing(false)}>Cancel</button>}</div>
         </form>
+      ) : solicitor ? (
+        <>
+          <dl className="sol-details">
+            <dt>Name</dt><dd>{solicitor.name}</dd>
+            {solicitor.firm && <><dt>Firm</dt><dd>{solicitor.firm}</dd></>}
+            <dt>Email</dt><dd><a href={`mailto:${solicitor.email}`}>{solicitor.email}</a></dd>
+            {solicitor.phone && <><dt>Phone</dt><dd>{solicitor.phone}</dd></>}
+            {solicitor.licence && <><dt>Licence</dt><dd>{solicitor.licence}</dd></>}
+          </dl>
+          {mine && <button className="linkish" onClick={() => setEditing(true)}>Change</button>}
+        </>
+      ) : (
+        <p className="muted waiting"><span className="pulse" aria-hidden="true" />Waiting for the {side} to add their solicitor.</p>
       )}
-
-      {/* Settlement link if accepted */}
-      {offer.status === 'accepted' && (
-        <div className="offer-accepted-banner">
-          <div>
-            <span>Offer accepted</span>
-            <p>Have your solicitor or conveyancer review the agreed terms and prepare the contract. Acceptance here is not a substitute for a signed contract.</p>
-          </div>
-          <div className="offer-accepted-actions">
-            <Link to={`/settlement/${offer.id}`} className="btn-green">View Settlement Tracker →</Link>
-            <a href={api.offers.pdf(offer.id)} target="_blank" rel="noreferrer" className="btn-outline">Download Letter of Offer (PDF)</a>
-          </div>
-        </div>
-      )}
-
-      {/* History */}
-      <div className="offer-history">
-        <h3>Negotiation History</h3>
-        {offer.history?.length === 0 ? (
-          <p className="empty-text">No history yet.</p>
-        ) : (
-          <div className="history-list">
-            {offer.history?.map(h => (
-              <div key={h.id} className="history-item">
-                <div className="history-meta">
-                  <span className={`badge ${h.made_by_role === 'buyer' ? 'badge-blue' : 'badge-green'}`}>{h.made_by_role}</span>
-                  <span className="history-action">{h.action}</span>
-                  <span className="history-name">{h.made_by_name}</span>
-                  <span className="history-date">{fmtDate(h.created_at)}</span>
-                </div>
-                {h.offer_price && <div className="history-price">{fmt(h.offer_price)}</div>}
-                {h.note && <div className="history-note">"{h.note}"</div>}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   )
 }
 
-// ————— Main Page —————
-export default function Offers() {
-  const { listingId, offerId } = useParams()
-  const navigate = useNavigate()
-  const [searchParams, setSearchParams] = useSearchParams()
-  const session = getSession()
+function Handover({ offer }) {
+  const [deal, setDeal] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const load = useCallback(() => api.offers.deal(offer.id).then(setDeal).catch(e => toast(e.message)), [offer.id])
+  useEffect(() => { load() }, [load])
+  if (!deal) return <p className="muted">Loading the handover…</p>
 
-  const [listing, setListing] = useState(null)
-  const [receivedOffers, setReceivedOffers] = useState([])
-  const [madeOffers, setMadeOffers] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState('')
-  const requestedTab = searchParams.get('tab')
-  // With no tab chosen, open the one that has offers: sellers usually have
-  // received offers and none made, so landing on an empty "made" tab hides them.
-  const activeTab = requestedTab === 'received' || requestedTab === 'made'
-    ? requestedTab
-    : (madeOffers.length === 0 && receivedOffers.length > 0 ? 'received' : 'made')
+  const items = checklistFor(offer)
+  const done = items.filter(i => deal.checklist[i.k]).length
+  const both = deal.solicitors.seller && deal.solicitors.buyer
+  const settled = !!deal.checklist.settled
 
-  useEffect(() => {
-    let active = true
-    async function load() {
-      setLoading(true)
-      setLoadError('')
-      try {
-        if (listingId) {
-          const property = await api.listings.get(listingId)
-          if (!active) return
-          setListing(property)
-          if (property.user_id === session?.id) {
-            const data = await api.offers.forListing(listingId)
-            if (active) setReceivedOffers(data)
-          }
-        } else if (!offerId) {
-          const [made, received] = await Promise.all([
-            api.offers.mine(),
-            api.offers.received(),
-          ])
-          if (active) {
-            setMadeOffers(made)
-            setReceivedOffers(received)
-          }
-        }
-      } catch (err) {
-        if (active) setLoadError(err.message || 'Could not load offers right now.')
-      } finally {
-        if (active) setLoading(false)
-      }
-    }
-    load()
-    return () => { active = false }
-  }, [listingId, offerId, session?.id])
-
-  function changeTab(tab) {
-    setSearchParams({ tab })
+  async function saveSolicitor(side, form) { setDeal(await api.offers.setSolicitor(offer.id, side, form)) }
+  async function tick(key, on) {
+    try { setDeal(d => ({ ...d, ...{} })); const next = await api.offers.tick(offer.id, key, on); setDeal(d => ({ ...d, ...next })) } catch (e) { toast(e.message) }
   }
-
-  if (loading) return <div className="container"><p className="loading-text">Loading offers…</p></div>
-
-  if (offerId) {
-    return (
-      <div className="offers-page">
-        <div className="container">
-          <Link className="back-btn" to={activeTab === 'received' ? '/offers?tab=received' : '/offers'}>← All offers</Link>
-          <OfferDetail offerId={offerId} currentUser={session} />
-        </div>
-      </div>
-    )
-  }
-
-  if (listingId) {
-    const isOwner = listing?.user_id === session?.id
-    return (
-      <div className="offers-page">
-        <div className="container">
-          <Link className="back-btn" to={`/listing/${listingId}`}>← Back to listing</Link>
-          {loadError ? (
-            <p className="error-msg" role="alert">{loadError}</p>
-          ) : (
-            <>
-              <p className="offers-kicker">Direct negotiation</p>
-              <h1>{isOwner ? 'Offers on your listing' : 'Make an offer'}</h1>
-              {listing && <p className="offers-listing-title">{listing.title} — {listing.suburb}, {listing.state}</p>}
-              <OfferGuidance />
-              {isOwner ? (
-                <OfferList
-                  offers={receivedOffers}
-                  side="seller"
-                  emptyTitle="No offers received yet"
-                  emptyMessage="New buyer offers for this listing will appear here."
-                />
-              ) : (
-                <MakeOfferForm
-                  listingId={listingId}
-                  onSuccess={offer => navigate(`/offers/view/${offer.id}`)}
-                />
-              )}
-            </>
-          )}
-        </div>
-      </div>
-    )
+  async function send() {
+    setBusy(true)
+    try { const next = await api.offers.handover(offer.id); setDeal(d => ({ ...d, ...next })); toast('Deal emailed to both solicitors') } catch (e) { toast(e.message) } finally { setBusy(false) }
   }
 
   return (
-    <div className="offers-page">
-      <div className="container">
-        <p className="offers-kicker">Negotiate direct</p>
-        <h1>Offers and negotiations</h1>
-        <p className="offers-listing-title">Make, receive and respond to offers in one place. Every counter and decision is saved in the negotiation history.</p>
-        <OfferGuidance />
-
-        {loadError && <p className="error-msg" role="alert">{loadError}</p>}
-
-        <div className="offers-tabs" role="tablist" aria-label="Offers">
-          <button type="button" role="tab" aria-selected={activeTab === 'made'} className={`offers-tab ${activeTab === 'made' ? 'active' : ''}`} onClick={() => changeTab('made')}>
-            Offers I’ve made <span>{madeOffers.length}</span>
-          </button>
-          <button type="button" role="tab" aria-selected={activeTab === 'received'} className={`offers-tab ${activeTab === 'received' ? 'active' : ''}`} onClick={() => changeTab('received')}>
-            Offers on my listings <span>{receivedOffers.length}</span>
-          </button>
+    <section className="handover" aria-label="Hand over to solicitors">
+      <div className="handover-head">
+        <span className="handover-step">Agreed at {money(offer.offer_price)}</span>
+        <h3>Next: hand the deal to your solicitors</h3>
+        <p className="muted">Each side adds their solicitor or conveyancer. Houzeey emails them the agreed terms, then they handle identity checks, anti-money-laundering checks, disclosure, the contract and settlement.</p>
+      </div>
+      <div className="sol-grid">
+        <SolicitorCard key={`s-${deal.solicitors.seller?.updated_at || 'none'}`} side="seller" mine={deal.my_side === 'seller'} solicitor={deal.solicitors.seller} onSave={saveSolicitor} />
+        <SolicitorCard key={`b-${deal.solicitors.buyer?.updated_at || 'none'}`} side="buyer" mine={deal.my_side === 'buyer'} solicitor={deal.solicitors.buyer} onSave={saveSolicitor} />
+      </div>
+      {both ? (
+        <div className="handover-send">
+          <button className="btn btn-primary" onClick={send} disabled={busy}>{busy ? 'Sending…' : deal.handover_at ? 'Email the solicitors again' : 'Email the deal to both solicitors'}</button>
+          <button className="btn btn-outline btn-sm" onClick={() => downloadLetter(offer.id)}>Letter of offer (PDF)</button>
+          {deal.handover_at && <span className="sent-note">✓ Sent {fmtStamp(deal.handover_at)}</span>}
         </div>
-
-        {activeTab === 'made' ? (
-          <OfferList
-            offers={madeOffers}
-            side="buyer"
-            emptyTitle="You haven’t made an offer yet"
-            emptyMessage="Browse owner-listed homes and make an offer directly to the seller."
-            emptyAction={<Link className="offers-empty-link" to="/buy">Browse homes for sale →</Link>}
-          />
-        ) : (
-          <OfferList
-            offers={receivedOffers}
-            side="seller"
-            emptyTitle="No offers on your listings yet"
-            emptyMessage="When a buyer makes an offer on one of your active listings, you’ll find it here."
-            emptyAction={<Link className="offers-empty-link" to="/sell">List your home →</Link>}
-          />
-        )}
+      ) : (
+        <p className="muted handover-wait">Once both solicitors are added, you can email them the agreed price, terms and contacts in one go. <button className="linkish" onClick={() => downloadLetter(offer.id)}>Download the letter of offer</button></p>
+      )}
+      <div className="settle">
+        <div className="settle-head"><h4>Settlement checklist</h4><span className="muted">{done} of {items.length} done</span></div>
+        <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={items.length} aria-valuenow={done} aria-label="Settlement progress"><i style={{ width: `${Math.round((done / items.length) * 100)}%` }} /></div>
+        <ul className="checklist">
+          {items.map(it => {
+            const d = deal.checklist[it.k]
+            return (
+              <li key={it.k} className={d ? 'is-done' : ''}>
+                <label><input type="checkbox" checked={!!d} onChange={e => tick(it.k, e.target.checked)} /><span className="ck-text">{it.t}</span></label>
+                <span className="ck-who">{it.who}{d ? ` · ${fmtDate(d.done_at)}${d.by ? ` by ${d.by}` : ''}` : ''}</span>
+              </li>
+            )
+          })}
+        </ul>
+        <p className="muted small-print">The solicitors run these steps. Tick each one off as they confirm it, so both sides can see where things are. Rules differ by state, so your solicitor confirms what applies.</p>
       </div>
-    </div>
-  )
-}
-
-function OfferGuidance() {
-  return (
-    <section className="offers-guidance" aria-labelledby="offers-guidance-title">
-      <div>
-        <p className="offers-guidance-kicker">A clear record, from offer to handover</p>
-        <h2 id="offers-guidance-title">Negotiate directly. Keep the important details together.</h2>
-        <p>Set the price, deposit, settlement timing and conditions. The other party can accept, counter or decline, and the agreed terms can be shared with your conveyancers.</p>
-      </div>
-      <ol>
-        <li><span>01</span><strong>Send terms</strong><small>Include your price and conditions.</small></li>
-        <li><span>02</span><strong>Respond or counter</strong><small>Both sides can take turns.</small></li>
-        <li><span>03</span><strong>Ask your solicitor</strong><small>Have the formal contract prepared.</small></li>
-      </ol>
+      {settled && <div className="settled-banner"><strong>Settled.</strong> Congratulations on your private sale!</div>}
     </section>
   )
 }
 
-function OfferList({ offers, side, emptyTitle, emptyMessage, emptyAction }) {
-  if (offers.length === 0) {
-    return (
-      <div className="offers-empty">
-        <h2>{emptyTitle}</h2>
-        <p>{emptyMessage}</p>
-        {emptyAction}
-      </div>
-    )
+const VERBS = { submitted: 'offered', countered: 'countered with', accepted: 'accepted', rejected: 'declined the offer', withdrawn: 'withdrew the offer' }
+
+function OfferCard({ offer, tab, focus, onChanged }) {
+  const mySide = tab === 'buying' ? 'buyer' : 'seller'
+  const otherName = tab === 'buying' ? offer.seller_name : offer.buyer_name
+  const active = ['pending', 'countered'].includes(offer.status)
+  const myTurn = active && offer.current_offer_by !== mySide
+  const [countering, setCountering] = useState(false)
+  const [counter, setCounter] = useState({ amount: Math.round(Number(offer.offer_price)), days: '42', note: '' })
+  const [msg, setMsg] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  const status = offer.status === 'accepted' ? ['Agreed', 'is-ok']
+    : offer.status === 'rejected' ? ['Declined', 'is-muted']
+      : offer.status === 'withdrawn' ? ['Withdrawn', 'is-muted']
+        : myTurn ? ['Your turn to reply', 'is-turn'] : [`Waiting for ${String(otherName || '').split(' ')[0]}`, 'is-wait']
+
+  async function act(kind) {
+    if (kind === 'accept' && !window.confirm(`Accept ${money(offer.offer_price)}? The other side will be told and the home will show as under offer.`)) return
+    if (kind === 'reject' && !window.confirm('Decline this offer?')) return
+    if (kind === 'withdraw' && !window.confirm('Withdraw your offer?')) return
+    setBusy(true); setError('')
+    try {
+      if (kind === 'accept') await api.offers.accept(offer.id)
+      if (kind === 'reject') await api.offers.reject(offer.id)
+      if (kind === 'withdraw') await api.offers.withdraw(offer.id)
+      toast(kind === 'accept' ? 'Offer accepted' : kind === 'reject' ? 'Offer declined' : 'Offer withdrawn')
+      onChanged()
+    } catch (e) { setError(e.message) } finally { setBusy(false) }
   }
 
+  async function sendCounter(e) {
+    e.preventDefault()
+    const amount = Number(counter.amount)
+    if (!Number.isFinite(amount) || amount < 1000) { setError('Enter a counter-offer in dollars.'); return }
+    setBusy(true); setError('')
+    const d = new Date(); d.setDate(d.getDate() + Number(counter.days))
+    try {
+      await api.offers.counter(offer.id, { offer_price: amount, settlement_date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`, note: counter.note.trim() || undefined })
+      toast('Counter-offer sent'); setCountering(false); onChanged()
+    } catch (err) { setError(err.message) } finally { setBusy(false) }
+  }
+
+  async function sendMessage(e) {
+    e.preventDefault()
+    if (!msg.trim()) return
+    try {
+      await api.conversations.start({ recipient_id: tab === 'buying' ? offer.seller_id : offer.buyer_id, listing_id: offer.listing_id, message: msg.trim() })
+      setMsg(''); toast('Message sent')
+    } catch (err) { toast(err.message) }
+  }
+
+  const address = [offer.listing_address, `${offer.listing_suburb || ''}, ${offer.listing_state || ''} ${offer.listing_postcode || ''}`].join(', ')
   return (
-    <div className="offers-list">
-      {offers.map(offer => {
-        const badge = STATUS_BADGE[offer.status] || { label: offer.status, cls: 'badge-grey' }
-        const otherParty = side === 'buyer'
-          ? `Seller: ${offer.seller_name || 'Owner'}`
-          : `Buyer: ${offer.buyer_name || 'Buyer'}`
-        return (
-          <Link
-            key={offer.id}
-            to={`/offers/view/${offer.id}?tab=${side === 'seller' ? 'received' : 'made'}`}
-            className="offer-row"
-          >
-            <div>
-              <div className="offer-row-title">{offer.listing_title || 'Property offer'}</div>
-              <div className="offer-row-sub">{offer.listing_suburb || offer.listing_address || 'Property'} · {otherParty} · Updated {fmtDate(offer.updated_at || offer.created_at)}</div>
-            </div>
-            <div className="offer-row-right">
-              <div className="offer-row-price">{fmt(offer.offer_price)}</div>
-              <span className={`badge ${badge.cls}`}>{badge.label}</span>
-            </div>
-          </Link>
-        )
-      })}
-    </div>
+    <article className={`offer-card ${focus ? 'is-focus' : ''}`} id={`offer-${offer.id}`}>
+      <div className="offer-head">
+        <Link className="offer-thumb" to={`/listing/${offer.listing_id}`} tabIndex={-1} aria-hidden="true">
+          <Cover listing={{ id: offer.listing_id, primary_image: offer.listing_image, property_type: 'house', address }} />
+        </Link>
+        <div className="offer-meta">
+          <span className={`pill ${status[1]}`}>{status[0]}</span>
+          <h2><Link to={`/listing/${offer.listing_id}`}>{address}</Link></h2>
+          <p className="muted">{priceText({ price: offer.listing_price, price_display: offer.listing_price_display })} · {tab === 'buying' ? `Owner: ${offer.seller_name}` : `Buyer: ${offer.buyer_name}`}</p>
+        </div>
+        <div className="offer-current"><span className="muted">{offer.status === 'accepted' ? 'Agreed price' : 'On the table'}</span><strong>{money(offer.offer_price)}</strong><small>{termsText(offer)}</small></div>
+      </div>
+      <ol className="timeline" aria-label="Negotiation history">
+        {(offer.history || []).map((h, i) => {
+          const mine = h.made_by_role === mySide
+          const cls = h.action === 'accepted' ? 'ev-accept' : h.action === 'rejected' ? 'ev-decline' : h.action === 'withdrawn' ? 'ev-withdraw' : ''
+          return (
+            <li key={i} className={`ev ${mine ? 'ev-me' : 'ev-them'} ${cls}`}>
+              <span className="ev-dot" aria-hidden="true" />
+              <div className="ev-body">
+                <p><strong>{mine ? 'You' : h.made_by_role === 'buyer' ? offer.buyer_name || 'Buyer' : offer.seller_name || 'Owner'}</strong> {VERBS[h.action] || h.action}{h.offer_price && ['submitted', 'countered', 'accepted'].includes(h.action) ? <> <b>{money(h.offer_price)}</b></> : null}</p>
+                {h.settlement_date && h.action !== 'accepted' && <p className="ev-terms">Settlement {fmtDate(h.settlement_date)}</p>}
+                {h.note && <blockquote>{h.note}</blockquote>}
+                <time className="muted">{fmtStamp(h.created_at)}</time>
+              </div>
+            </li>
+          )
+        })}
+      </ol>
+      {error && <p className="form-error" role="alert">{error}</p>}
+      {myTurn && (
+        <>
+          <div className="offer-actions">
+            <button className="btn btn-primary btn-sm" onClick={() => act('accept')} disabled={busy}>Accept {money(offer.offer_price)}</button>
+            <button className="btn btn-outline btn-sm" onClick={() => setCountering(c => !c)} disabled={busy}>Counter-offer</button>
+            {tab === 'selling'
+              ? <button className="btn btn-ghost btn-sm danger" onClick={() => act('reject')} disabled={busy}>Decline</button>
+              : <button className="btn btn-ghost btn-sm danger" onClick={() => act('withdraw')} disabled={busy}>Withdraw</button>}
+          </div>
+          {countering && (
+            <form className="counter-form" onSubmit={sendCounter} noValidate>
+              <div className="field-grid">
+                <label className="field"><span>Counter-offer ($)</span><input type="number" min="1000" step="1" value={counter.amount} onChange={e => setCounter(c => ({ ...c, amount: e.target.value }))} required /></label>
+                <label className="field"><span>Settlement</span><select value={counter.days} onChange={e => setCounter(c => ({ ...c, days: e.target.value }))}>{[30, 42, 60, 90].map(d => <option key={d} value={d}>{d} days</option>)}</select></label>
+              </div>
+              <label className="field"><span>Message (optional)</span><textarea rows={2} value={counter.note} onChange={e => setCounter(c => ({ ...c, note: e.target.value }))} /></label>
+              <div className="row-actions"><button className="btn btn-primary btn-sm" type="submit" disabled={busy}>Send counter-offer</button><button className="btn btn-ghost btn-sm" type="button" onClick={() => setCountering(false)}>Cancel</button></div>
+            </form>
+          )}
+        </>
+      )}
+      {active && !myTurn && (
+        <div className="offer-actions">
+          <span className="muted waiting"><span className="pulse" aria-hidden="true" />Waiting for {String(otherName || '').split(' ')[0]} to reply</span>
+          {tab === 'buying' && <button className="btn btn-ghost btn-sm danger" onClick={() => act('withdraw')} disabled={busy}>Withdraw</button>}
+        </div>
+      )}
+      {offer.status === 'accepted' && <Handover offer={offer} />}
+      {active && (
+        <form className="msg-form" onSubmit={sendMessage}>
+          <input value={msg} onChange={e => setMsg(e.target.value)} placeholder="Send a message without changing the offer" aria-label="Message" />
+          <button className="btn btn-outline btn-sm" type="submit">Send</button>
+        </form>
+      )}
+    </article>
+  )
+}
+
+export default function Offers() {
+  const { listingId, offerId } = useParams()
+  const [params, setParams] = useSearchParams()
+  const [buying, setBuying] = useState(null)
+  const [selling, setSelling] = useState(null)
+  const [error, setError] = useState('')
+  const focusId = params.get('id') || offerId
+
+  const load = useCallback(() => {
+    Promise.all([api.offers.mine(), api.offers.received()])
+      .then(([m, r]) => { setBuying(m); setSelling(r) })
+      .catch(e => setError(e.message || 'Could not load offers.'))
+  }, [])
+  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    if (focusId && buying) document.getElementById(`offer-${focusId}`)?.scrollIntoView({ block: 'center' })
+  }, [focusId, buying])
+
+  if (listingId) return <Navigate to={`/listing/${listingId}?offer=1`} replace />
+
+  const requested = params.get('tab')
+  let tab = requested === 'selling' || requested === 'buying' ? requested : null
+  if (!tab && focusId && selling?.some(o => o.id === focusId)) tab = 'selling'
+  if (!tab) tab = buying && selling && buying.length === 0 && selling.length > 0 ? 'selling' : 'buying'
+  const items = (tab === 'buying' ? buying : selling) || []
+  const turn = (list, side) => (list || []).some(o => ['pending', 'countered'].includes(o.status) && o.current_offer_by !== side)
+
+  return (
+    <>
+      <section className="page-intro">
+        <div className="container">
+          <p className="eyebrow">Negotiate direct</p>
+          <h1>Offers and negotiations</h1>
+          <p className="muted">Make offers, counter-offers and agree on price and terms directly with the other side. Every step is kept in one timeline.</p>
+        </div>
+      </section>
+      <div className="container offers-page">
+        <div className="seg-tabs" role="tablist" aria-label="Which offers">
+          <button role="tab" className={`seg-tab ${turn(buying, 'buyer') ? 'has-turn' : ''}`} aria-selected={tab === 'buying'} onClick={() => setParams({ tab: 'buying' })}>Offers I&apos;ve made <span className="seg-count">{buying?.length ? `(${buying.length})` : ''}</span></button>
+          <button role="tab" className={`seg-tab ${turn(selling, 'seller') ? 'has-turn' : ''}`} aria-selected={tab === 'selling'} onClick={() => setParams({ tab: 'selling' })}>Offers on my listings <span className="seg-count">{selling?.length ? `(${selling.length})` : ''}</span></button>
+        </div>
+        <section className="how-negotiate" aria-labelledby="howNegTitle">
+          <h2 id="howNegTitle">How negotiating works on Houzeey</h2>
+          <ol>
+            <li><b>Make an offer.</b> On any home for sale, tap <em>Make an offer</em> and set your price, deposit, settlement date and conditions.</li>
+            <li><b>The owner replies.</b> They can accept, decline or send a counter-offer.</li>
+            <li><b>Go back and forth.</b> Counter, add messages or withdraw. Every step is saved in one timeline.</li>
+            <li><b>Agree.</b> Once someone accepts, the home shows &quot;Under offer&quot;.</li>
+            <li><b>Hand over to your solicitors.</b> Both sides add their solicitor or conveyancer and Houzeey emails them the deal. They handle identity checks, anti-money-laundering checks, disclosure, the contract and settlement, and you follow each step on a checklist.</li>
+          </ol>
+        </section>
+        {error && <p className="form-error" role="alert">{error}</p>}
+        {buying === null ? <p className="muted">Loading offers…</p> : (
+          <div className="offer-list">
+            {items.map(o => <OfferCard key={o.id} offer={o} tab={tab} focus={o.id === focusId} onChanged={load} />)}
+          </div>
+        )}
+        {buying !== null && !items.length && (
+          <div className="empty">
+            {tab === 'buying'
+              ? <><h2>You haven&apos;t made any offers yet</h2><p>Open any property for sale and choose <strong>Make an offer</strong>.</p><Link className="btn btn-primary" to="/buy">Browse properties</Link></>
+              : <><h2>No offers on your listings yet</h2><p>When buyers make offers they&apos;ll appear here for you to accept, counter or decline.</p><Link className="btn btn-primary" to="/sell">List your property</Link></>}
+          </div>
+        )}
+      </div>
+    </>
   )
 }
