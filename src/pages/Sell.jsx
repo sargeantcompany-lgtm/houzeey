@@ -168,7 +168,7 @@ export default function Sell() {
         await api.videos.completeUpload(upload.videoId)
       }
 
-      navigate('/dashboard')
+      navigate('/dashboard', { state: { listingSubmitted: true } })
     } catch (err) {
       setError(listingCreated
         ? `Your listing was submitted for solicitor review, but its video upload could not finish. ${err.message} Choose “Retry video upload” to try again.`

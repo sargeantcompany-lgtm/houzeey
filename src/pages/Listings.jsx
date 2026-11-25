@@ -24,6 +24,10 @@ export default function Listings() {
   const [loading, setLoading] = useState(true)
   const [saved, setSaved] = useState(new Set())
   const [listingError, setListingError] = useState('')
+  // On phones the filter panel is collapsed so homes show first.
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const activeFilterCount = ['state', 'property_type', 'beds', 'baths', 'cars', 'min_price', 'max_price', 'min_land_size', 'max_land_size']
+    .filter(key => searchParams.get(key)).length
   const navigate = useNavigate()
   const offsetValue = Number(searchParams.get('offset') || 0)
   const offset = Number.isSafeInteger(offsetValue) && offsetValue > 0 ? offsetValue : 0
@@ -63,6 +67,7 @@ export default function Listings() {
 
   function submitFilters(event) {
     event.preventDefault()
+    setFiltersOpen(false)
     const formData = new FormData(event.currentTarget)
     const next = new URLSearchParams()
     if (searchParams.get('sort')) next.set('sort', searchParams.get('sort'))
@@ -131,13 +136,22 @@ export default function Listings() {
       </div>
 
       <div className="listings-body container">
-        <aside className="filters">
+        <aside className={`filters${filtersOpen ? ' filters-open' : ''}`}>
           <div className="filters-title-row">
             <h3>Refine your search</h3>
             <span>FOR SALE BY OWNER</span>
+            <button
+              type="button"
+              className="filters-toggle"
+              aria-expanded={filtersOpen}
+              aria-controls="listing-filters-form"
+              onClick={() => setFiltersOpen(open => !open)}
+            >
+              {filtersOpen ? 'Hide filters' : `Filters${activeFilterCount ? ` (${activeFilterCount})` : ''}`}
+            </button>
           </div>
 
-          <form key={searchParams.toString()} className="listing-filters-form" onSubmit={submitFilters}>
+          <form key={searchParams.toString()} id="listing-filters-form" className="listing-filters-form" onSubmit={submitFilters}>
             <div className="filter-location">
               <label htmlFor="listing-location">Location</label>
               <div className="filter-location-row">

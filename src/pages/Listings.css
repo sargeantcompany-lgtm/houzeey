@@ -494,6 +494,10 @@
 .listings-pagination button:hover:not(:disabled) { background: #edf5f3; }
 .listings-pagination button:disabled { color: #9aa8ad; cursor: not-allowed; }
 
+.filters-toggle {
+  display: none;
+}
+
 @media (max-width: 800px) {
   .listings-body {
     grid-template-columns: 1fr;
@@ -501,6 +505,30 @@
 
   .filters {
     position: static;
+  }
+
+  /* Collapsed by default on phones so results appear first; the location
+     search stays visible because it is the most common filter. */
+  .filters .filters-title-row span {
+    display: none;
+  }
+
+  .filters-toggle {
+    display: inline-flex;
+    margin-left: auto;
+    padding: 8px 14px;
+    border: 1.5px solid var(--border, #d6e2e2);
+    border-radius: 999px;
+    background: #fff;
+    color: inherit;
+    font: inherit;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+
+  .filters:not(.filters-open) .listing-filters-form > *:not(.filter-location) {
+    display: none;
   }
 
   .filters-title-row {

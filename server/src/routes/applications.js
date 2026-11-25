@@ -2,12 +2,14 @@ import { Router } from 'express'
 import pool from '../db.js'
 import { requireAuth } from '../middleware/auth.js'
 import { upload } from '../middleware/upload.js'
-import { saveImage, imageUrl } from '../services/imageStorage.js'
+import { saveImage, imageUrl, signDocumentFields } from '../services/imageStorage.js'
+
+const signApplication = row => signDocumentFields(row, ['id_document_url'])
 
 const router = Router()
 
 async function storeFile(req, file) {
-  const id = await saveImage(pool, { buffer: file.buffer, mimetype: file.mimetype })
+  const id = await saveImage(pool, { buffer: file.buffer, mimetype: file.mimetype, isPrivate: true })
   return imageUrl(req, id)
 }
 
@@ -26,7 +28,7 @@ router.get('/listing/:listingId', requireAuth, async (req, res) => {
       ORDER BY ra.created_at DESC
     `, [req.params.listingId])
 
-    res.json(result.rows)
+    res.json(result.rows.map(signApplication))
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Failed to fetch applications' })
@@ -45,7 +47,7 @@ router.get('/received', requireAuth, async (req, res) => {
       WHERE ra.landlord_id = $1
       ORDER BY ra.created_at DESC
     `, [req.user.id])
-    res.json(result.rows)
+    res.json(result.rows.map(signApplication))
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Failed to fetch applications' })
@@ -65,7 +67,7 @@ router.get('/mine', requireAuth, async (req, res) => {
       WHERE ra.tenant_id = $1
       ORDER BY ra.created_at DESC
     `, [req.user.id])
-    res.json(result.rows)
+    res.json(result.rows.map(signApplication))
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Failed to fetch your applications' })
@@ -91,7 +93,7 @@ router.get('/:id', requireAuth, async (req, res) => {
       return res.status(403).json({ error: 'Not authorised' })
     }
 
-    res.json(app)
+    res.json(signApplication(app))
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Failed to fetch application' })
@@ -177,7 +179,7 @@ router.put('/:id/status', requireAuth, async (req, res) => {
       [status, landlord_notes || null, req.params.id]
     )
 
-    res.json(result.rows[0])
+    res.json(signApplication(result.rows[0]))
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Failed to update application status' })

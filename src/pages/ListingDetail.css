@@ -21,7 +21,7 @@
 
 .detail-grid {
   display: grid;
-  grid-template-columns: 1fr 360px;
+  grid-template-columns: minmax(0, 1fr) 360px;
   gap: 28px;
   align-items: start;
 }
@@ -403,9 +403,13 @@
   gap: 4px;
   border-bottom: 1px solid var(--border);
   margin-bottom: 20px;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 
 .detail-tab {
+  flex-shrink: 0;
+  white-space: nowrap;
   padding: 10px 18px;
   border: none;
   background: none;
@@ -564,7 +568,7 @@
 
 @media (max-width: 900px) {
   .detail-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .price-card {

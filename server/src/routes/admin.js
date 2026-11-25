@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import pool from '../db.js'
 import { requireAuth } from '../middleware/auth.js'
+import { signDocumentFields } from '../services/imageStorage.js'
 
 const router = Router()
 
@@ -204,7 +205,7 @@ router.get('/verifications', requireAuth, requireAdmin, async (req, res) => {
       WHERE iv.status = 'pending'
       ORDER BY iv.created_at ASC
     `)
-    res.json(result.rows)
+    res.json(result.rows.map(row => signDocumentFields(row, ['document_url', 'selfie_url'])))
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Failed to fetch verifications' })

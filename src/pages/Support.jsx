@@ -23,13 +23,16 @@ export default function Support() {
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
 
+  // getSession() returns a new object each render, so depend on the user id only;
+  // depending on the object itself re-ran this effect in an endless request loop.
+  const userId = session?.id
   useEffect(() => {
-    if (session) {
+    if (userId) {
       api.support.mine().then(setTickets).catch(() => {}).finally(() => setLoading(false))
     } else {
       setLoading(false)
     }
-  }, [session])
+  }, [userId])
 
   async function handleSubmit(e) {
     e.preventDefault()

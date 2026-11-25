@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { api } from '../api'
 import { getSession } from '../auth'
 import { getVideoMimeType, MAX_VIDEO_UPLOAD_BYTES } from '../videoUpload'
@@ -9,7 +9,9 @@ const TABS = ['Overview', 'My Listings', 'Offers', 'Inspections']
 
 export default function Dashboard() {
   const session = getSession()
-  const [tab, setTab] = useState('Overview')
+  const location = useLocation()
+  const justSubmitted = Boolean(location.state?.listingSubmitted)
+  const [tab, setTab] = useState(justSubmitted ? 'My Listings' : 'Overview')
   const [stats, setStats] = useState(null)
   const [listings, setListings] = useState([])
   const [videos, setVideos] = useState([])
@@ -25,7 +27,9 @@ export default function Dashboard() {
   const [tabLoading, setTabLoading] = useState(false)
   const [statusUpdating, setStatusUpdating] = useState(null)
   const [listingError, setListingError] = useState('')
-  const [listingNotice, setListingNotice] = useState('')
+  const [listingNotice, setListingNotice] = useState(justSubmitted
+    ? 'Listing submitted. We have emailed your solicitor or conveyancer a review link — your listing goes live as soon as they approve it.'
+    : '')
   const [reviewResending, setReviewResending] = useState(null)
 
   const user = session || {}

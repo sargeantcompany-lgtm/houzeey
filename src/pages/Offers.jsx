@@ -56,7 +56,7 @@ function MakeOfferForm({ listingId, onSuccess }) {
       <div className="form-row">
         <div className="form-group">
           <label>Offer Price (AUD) *</label>
-          <input type="number" value={form.offer_price} onChange={set('offer_price')} placeholder="e.g. 850000" min="1" step="1000" required />
+          <input type="number" value={form.offer_price} onChange={set('offer_price')} placeholder="e.g. 850000" min="1" step="1" inputMode="numeric" required />
         </div>
         <div className="form-group">
           <label>Proposed Settlement Date</label>
@@ -313,7 +313,12 @@ export default function Offers() {
   const [madeOffers, setMadeOffers] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
-  const activeTab = searchParams.get('tab') === 'received' ? 'received' : 'made'
+  const requestedTab = searchParams.get('tab')
+  // With no tab chosen, open the one that has offers: sellers usually have
+  // received offers and none made, so landing on an empty "made" tab hides them.
+  const activeTab = requestedTab === 'received' || requestedTab === 'made'
+    ? requestedTab
+    : (madeOffers.length === 0 && receivedOffers.length > 0 ? 'received' : 'made')
 
   useEffect(() => {
     let active = true
@@ -350,7 +355,7 @@ export default function Offers() {
   }, [listingId, offerId, session?.id])
 
   function changeTab(tab) {
-    setSearchParams(tab === 'made' ? {} : { tab })
+    setSearchParams({ tab })
   }
 
   if (loading) return <div className="container"><p className="loading-text">Loading offers…</p></div>

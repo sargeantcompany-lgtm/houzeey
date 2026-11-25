@@ -25,6 +25,7 @@ import solicitorReviewRoutes from './routes/solicitorReviews.js'
 import videoRoutes from './routes/videos.js'
 import { runMigrations } from './migrations.js'
 import { createDownloadUrl } from './services/videoStorage.js'
+import { isValidImageSignature } from './services/imageStorage.js'
 
 dotenv.config()
 
@@ -403,25 +404,40 @@ const __dirname = path.dirname(__filename)
 const app = express()
 const PORT = process.env.PORT || 3001
 
+// Railway (and most hosts) sit behind one proxy hop. Without this, every visitor
+// shares the proxy's IP and therefore one rate-limit bucket.
+app.set('trust proxy', 1)
+
 // Rate limiting
+// Strict limit only for credential attempts (login, register, password reset).
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 20,
+  skip: req => req.method === 'GET' || req.path === '/me',
   message: { error: 'Too many attempts, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
 })
 
+// General per-visitor limit. Image redirects and health checks are excluded so a
+// page full of listing photos doesn't use up a visitor's allowance.
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 300,
+  max: 1500,
+  skip: req => req.path.startsWith('/api/images/') || req.path === '/health',
   message: { error: 'Too many requests, please slow down.' },
   standardHeaders: true,
   legacyHeaders: false,
 })
 
+// CLIENT_URL may list several origins separated by commas (e.g. www and apex domains).
+const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
+  .split(',')
+  .map(origin => origin.trim().replace(/\/$/, ''))
+  .filter(Boolean)
+
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: allowedOrigins.length === 1 ? allowedOrigins[0] : allowedOrigins,
   credentials: true,
 }))
 
@@ -456,18 +472,22 @@ app.use('/api/videos', videoRoutes)
 // Serve images from DB
 app.get('/api/images/:id', async (req, res) => {
   try {
-    const result = await pool.query('SELECT data, mimetype, storage_key FROM listing_images WHERE id = $1', [req.params.id])
+    const result = await pool.query('SELECT data, mimetype, storage_key, is_private FROM listing_images WHERE id = $1', [req.params.id])
     if (result.rows.length === 0) return res.status(404).end()
-    const { data, mimetype, storage_key: storageKey } = result.rows[0]
+    const { data, mimetype, storage_key: storageKey, is_private: isPrivate } = result.rows[0]
+    // ID and application documents need a short-lived signed link issued by an authorised endpoint.
+    if (isPrivate && !isValidImageSignature(req.params.id, req.query.expires, req.query.sig)) {
+      return res.status(404).end()
+    }
     if (storageKey) {
       // Bucket-stored image: redirect to a short-lived signed URL so bytes never pass through the API.
-      const signedUrl = await createDownloadUrl(storageKey, mimetype, 60 * 60)
-      res.setHeader('Cache-Control', 'private, max-age=3000')
+      const signedUrl = await createDownloadUrl(storageKey, mimetype, isPrivate ? 5 * 60 : 60 * 60)
+      res.setHeader('Cache-Control', isPrivate ? 'private, no-store' : 'private, max-age=3000')
       return res.redirect(302, signedUrl)
     }
     if (!data) return res.status(404).end()
     res.setHeader('Content-Type', mimetype || 'image/jpeg')
-    res.setHeader('Cache-Control', 'public, max-age=31536000')
+    res.setHeader('Cache-Control', isPrivate ? 'private, no-store' : 'public, max-age=31536000')
     res.send(Buffer.from(data, 'base64'))
   } catch {
     res.status(500).end()

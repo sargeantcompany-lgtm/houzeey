@@ -135,7 +135,7 @@ export default function ListingDetail() {
             <div className="gallery">
               <div className="gallery-main">
                 <img src={imgs[activeImg]} alt={listing.title} />
-                <button className="gallery-save-btn" onClick={toggleSave} disabled={saving} title={saved ? 'Unsave' : 'Save'}>
+                <button className="gallery-save-btn" onClick={toggleSave} disabled={saving} title={saved ? 'Unsave' : 'Save'} aria-label={saved ? 'Remove from saved homes' : 'Save this home'} aria-pressed={saved}>
                   {saved ? '♥' : '♡'}
                 </button>
               </div>

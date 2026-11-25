@@ -2,12 +2,12 @@ import { Router } from 'express'
 import pool from '../db.js'
 import { requireAuth } from '../middleware/auth.js'
 import { upload } from '../middleware/upload.js'
-import { saveImage, imageUrl } from '../services/imageStorage.js'
+import { saveImage, imageUrl, signDocumentFields } from '../services/imageStorage.js'
 
 const router = Router()
 
 async function storeFile(req, file) {
-  const id = await saveImage(pool, { buffer: file.buffer, mimetype: file.mimetype })
+  const id = await saveImage(pool, { buffer: file.buffer, mimetype: file.mimetype, isPrivate: true })
   return imageUrl(req, id)
 }
 
@@ -18,7 +18,7 @@ router.get('/me', requireAuth, async (req, res) => {
       'SELECT * FROM identity_verifications WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1',
       [req.user.id]
     )
-    res.json(result.rows[0] || null)
+    res.json(signDocumentFields(result.rows[0], ['document_url', 'selfie_url']) || null)
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Failed to fetch verification status' })
