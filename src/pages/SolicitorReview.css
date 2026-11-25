@@ -1,0 +1,343 @@
+.solicitor-review-page {
+  min-height: 100vh;
+  padding: 32px 18px 56px;
+  background: #f3f6f5;
+  color: #17364a;
+}
+
+.solicitor-review-wrap {
+  width: min(820px, 100%);
+  margin: 0 auto;
+}
+
+.solicitor-review-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 48px;
+  color: #193f50;
+  font-size: .95rem;
+  font-weight: 800;
+}
+
+.solicitor-review-brand small {
+  display: block;
+  margin-top: 2px;
+  color: #74838a;
+  font-size: .68rem;
+  font-weight: 500;
+}
+
+.solicitor-mark {
+  display: flex;
+  width: 39px;
+  height: 39px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #1b6570;
+  color: white;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.25rem;
+}
+
+.solicitor-review-intro {
+  margin-bottom: 23px;
+}
+
+.solicitor-review-kicker,
+.solicitor-property-label {
+  color: #4b8990;
+  font-size: .69rem;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.solicitor-review-intro h1,
+.solicitor-review-card h1 {
+  margin-top: 9px;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(2rem, 5vw, 2.8rem);
+  font-weight: 500;
+  letter-spacing: -.04em;
+}
+
+.solicitor-review-intro > p,
+.solicitor-review-card > p {
+  max-width: 630px;
+  margin-top: 10px;
+  color: #637681;
+  font-size: .9rem;
+  line-height: 1.65;
+}
+
+.solicitor-review-card {
+  padding: 28px;
+  border: 1px solid #e0e7e8;
+  border-radius: 10px;
+  background: white;
+  box-shadow: 0 8px 26px rgba(20, 54, 68, .06);
+}
+
+.solicitor-property-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.solicitor-property-heading h2 {
+  margin-top: 8px;
+  font-size: 1.23rem;
+}
+
+.solicitor-property-heading p {
+  margin-top: 5px;
+  color: #647681;
+  font-size: .82rem;
+}
+
+.solicitor-property-heading > strong {
+  color: #17364a;
+  font-size: 1.03rem;
+  white-space: nowrap;
+}
+
+.solicitor-property-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 11px 22px;
+  margin-top: 20px;
+  padding: 15px 0;
+  border-top: 1px solid #edf0f1;
+  border-bottom: 1px solid #edf0f1;
+  color: #526a76;
+  font-size: .78rem;
+}
+
+.solicitor-property-stats span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  text-transform: capitalize;
+}
+
+.solicitor-property-stats b {
+  color: #86959c;
+  font-size: .64rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.solicitor-description {
+  padding: 18px 0;
+}
+
+.solicitor-description h3,
+.solicitor-review-form h2 {
+  font-size: .94rem;
+}
+
+.solicitor-description p {
+  margin-top: 7px;
+  color: #62737d;
+  font-size: .82rem;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+.solicitor-review-disclaimer {
+  padding: 15px;
+  border: 1px solid #e3e9e5;
+  border-radius: 6px;
+  background: #f5f8f6;
+}
+
+.solicitor-review-disclaimer strong {
+  font-size: .79rem;
+}
+
+.solicitor-review-disclaimer p {
+  margin-top: 5px;
+  color: #687a7b;
+  font-size: .74rem;
+  line-height: 1.55;
+}
+
+.solicitor-review-form {
+  margin-top: 24px;
+  padding-top: 22px;
+  border-top: 1px solid #e7ecee;
+}
+
+.solicitor-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 13px;
+  margin-top: 15px;
+}
+
+.solicitor-form-grid label,
+.solicitor-note-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #485e6b;
+  font-size: .75rem;
+  font-weight: 700;
+}
+
+.solicitor-form-grid input,
+.solicitor-note-label textarea {
+  width: 100%;
+  padding: 10px 11px;
+  border: 1px solid #d2dcdf;
+  border-radius: 5px;
+  color: #17364a;
+  font: inherit;
+  font-size: .82rem;
+}
+
+.solicitor-form-grid input:focus,
+.solicitor-note-label textarea:focus {
+  border-color: #1b6570;
+  outline: 3px solid rgba(27, 101, 112, .12);
+}
+
+.solicitor-attest {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 16px 0;
+  color: #566a75;
+  font-size: .78rem;
+  line-height: 1.55;
+}
+
+.solicitor-attest input {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  margin: 2px 0 0;
+  accent-color: #1b6570;
+}
+
+.solicitor-note-label textarea {
+  resize: vertical;
+  font-weight: 400;
+}
+
+.solicitor-review-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.solicitor-review-actions button {
+  min-height: 42px;
+  padding: 0 14px;
+  border-radius: 5px;
+  font-size: .78rem;
+  font-weight: 750;
+}
+
+.solicitor-review-actions button:disabled {
+  cursor: wait;
+  opacity: .6;
+}
+
+.solicitor-request-changes {
+  border: 1px solid #c9d6d9;
+  color: #526873;
+}
+
+.solicitor-approve {
+  background: #1b6570;
+  color: white;
+}
+
+.solicitor-approve:hover {
+  background: #124a55;
+}
+
+.solicitor-review-error {
+  margin-top: 10px;
+  color: #a43737;
+  font-size: .78rem;
+}
+
+.solicitor-review-result {
+  padding: 40px;
+}
+
+.solicitor-review-result > p {
+  font-size: .9rem;
+}
+
+.solicitor-review-result > small {
+  display: block;
+  margin-top: 20px;
+  color: #71818a;
+  font-size: .73rem;
+}
+
+.solicitor-review-success {
+  display: flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+  border-radius: 50%;
+  background: #e4f2eb;
+  color: #27725b;
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.solicitor-review-footnote {
+  max-width: 680px;
+  margin: 20px auto 0;
+  color: #7a898e;
+  font-size: .68rem;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.solicitor-review-state {
+  padding: 100px 0;
+  color: #647681;
+  text-align: center;
+}
+
+@media (max-width: 560px) {
+  .solicitor-review-page {
+    padding: 24px 12px 40px;
+  }
+
+  .solicitor-review-brand {
+    margin-bottom: 34px;
+  }
+
+  .solicitor-review-card {
+    padding: 20px 16px;
+  }
+
+  .solicitor-property-heading {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .solicitor-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .solicitor-review-actions {
+    flex-direction: column-reverse;
+  }
+
+  .solicitor-review-actions button {
+    width: 100%;
+  }
+}

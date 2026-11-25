@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, Link, useNavigate } from 'react-router-dom'
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 import { isLoggedIn, getSession } from '../auth'
 import './ListingDetail.css'
@@ -8,12 +8,13 @@ const PLACEHOLDER = 'https://images.unsplash.com/photo-1564013799919-ab600027ffc
 
 export default function ListingDetail() {
   const { id } = useParams()
+  const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const [listing, setListing] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [activeImg, setActiveImg] = useState(0)
-  const [showContact, setShowContact] = useState(false)
+  const [showContact, setShowContact] = useState(() => searchParams.get('contact') === '1')
   const [message, setMessage] = useState('')
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
@@ -34,7 +35,7 @@ export default function ListingDetail() {
         return api.reviews.get(data.user_id)
       })
       .then(rev => setReviews(rev))
-      .catch(() => setError('Property not found'))
+      .catch(requestError => setError(requestError.message || 'Could not load this property.'))
       .finally(() => setLoading(false))
   }, [id])
 
@@ -51,7 +52,7 @@ export default function ListingDetail() {
 
   async function handleContact(e) {
     e.preventDefault()
-    if (!isLoggedIn()) { navigate('/login', { state: { from: { pathname: `/listing/${id}` } } }); return }
+    if (!isLoggedIn()) { navigate('/login', { state: { from: { pathname: `/listing/${id}?contact=1` } } }); return }
     const session = getSession()
     if (session.id === listing.user_id) return
 
@@ -105,8 +106,9 @@ export default function ListingDetail() {
     })
   }
 
-  const formatPrice = (p, type) => {
-    if (p == null) return 'Contact agent'
+  const formatPrice = (p, type, display, max) => {
+    if (display === 'contact' || p == null || Number(p) === 0) return 'Price on request'
+    if (display === 'range' && max) return `$${Number(p).toLocaleString()} – $${Number(max).toLocaleString()}`
     return type === 'rent' ? `$${Number(p).toLocaleString()}/wk` : `$${Number(p).toLocaleString()}`
   }
 
@@ -133,7 +135,7 @@ export default function ListingDetail() {
             <div className="gallery">
               <div className="gallery-main">
                 <img src={imgs[activeImg]} alt={listing.title} />
-                <button className="gallery-save-btn" onClick={toggleSave} disabled={saving} title={saved ? 'Unsave' : 'Save'}>
+                <button className="gallery-save-btn" onClick={toggleSave} disabled={saving} title={saved ? 'Unsave' : 'Save'} aria-label={saved ? 'Remove from saved homes' : 'Save this home'} aria-pressed={saved}>
                   {saved ? '♥' : '♡'}
                 </button>
               </div>
@@ -244,7 +246,7 @@ export default function ListingDetail() {
           {/* Right: price + contact */}
           <div className="detail-sidebar">
             <div className="price-card">
-              <div className="price-tag">{formatPrice(listing.price, listing.type)}</div>
+              <div className="price-tag">{formatPrice(listing.price, listing.type, listing.price_display, listing.price_max)}</div>
               <h1>{listing.title}</h1>
               <p className="detail-address">📍 {listing.address}, {listing.suburb} {listing.state} {listing.postcode}</p>
 
@@ -266,7 +268,7 @@ export default function ListingDetail() {
                 )}
               </div>
 
-              {showContact && (
+              {showContact && !isOwner && (
                 sent ? (
                   <p className="contact-sent">Message sent! Check your messages.</p>
                 ) : (
@@ -282,7 +284,8 @@ export default function ListingDetail() {
                 <div>
                   <div className="seller-name">
                     {listing.seller_name}
-                    {listing.seller_verified && <span className="verified-badge">✓ Verified</span>}
+                    {listing.seller_verified && <span className="verified-badge">✓ Identity checked</span>}
+                    {listing.solicitor_review_status === 'approved' && <span className="verified-badge">✓ Solicitor reviewed</span>}
                   </div>
                   <div className="seller-since">Member since {sellerSince}</div>
                   {reviews.count > 0 && (

@@ -8,7 +8,7 @@ export default function Footer() {
       <div className="footer-inner">
         <div className="footer-brand">
           <img src={logo} alt="Houzeey" className="footer-logo-img" />
-          <p>Australia's peer-to-peer real estate platform. Buy, sell and rent property — no agents, no commissions.</p>
+          <p>Australia's private property marketplace. Find homes listed by their owners, reviewed before they go live.</p>
         </div>
 
         <div className="footer-links">
@@ -17,12 +17,7 @@ export default function Footer() {
             <Link to="/buy">Properties for Sale</Link>
             <Link to="/sell">List Your Property</Link>
             <Link to="/sell">How It Works</Link>
-          </div>
-          <div className="footer-col">
-            <h4>Rent</h4>
-            <Link to="/rent">Rental Listings</Link>
-            <Link to="/rent">List a Rental</Link>
-            <Link to="/rent">Tenant Resources</Link>
+            <Link to="/guides">Selling Guides</Link>
           </div>
           <div className="footer-col">
             <h4>Account</h4>
@@ -44,7 +39,7 @@ export default function Footer() {
       </div>
 
       <div className="footer-bottom">
-        <p>&copy; {new Date().getFullYear()} Houzeey Pty Ltd. All rights reserved. ABN 00 000 000 000</p>
+        <p>&copy; {new Date().getFullYear()} Houzeey. All rights reserved.</p>
       </div>
     </footer>
   )

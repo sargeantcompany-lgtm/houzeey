@@ -10,11 +10,11 @@ export default function Terms() {
 
           <div className="legal-content">
             <div className="legal-notice">
-              <strong>Important Disclaimer:</strong> Houzeey is a peer-to-peer property listing platform. Houzeey is <em>not</em> a licensed real estate agent, does not provide legal advice, and is not affiliated with REA Group (realestate.com.au) or Domain Holdings Australia. All transactions are between private parties. We strongly recommend engaging a licensed conveyancer or solicitor for any property transaction.
+              <strong>Important Disclaimer:</strong> Houzeey is a private-sale property listing platform. Houzeey is <em>not</em> a licensed real estate agent, does not provide legal advice, and is not affiliated with REA Group (realestate.com.au) or Domain Holdings Australia. Listings are supplied by private sellers; buyers and sellers should obtain their own legal advice and confirm property information independently.
             </div>
 
             <h2>1. About Houzeey</h2>
-            <p>Houzeey Pty Ltd ("Houzeey", "we", "our") operates an online platform at houzeey.com that connects property buyers, sellers, landlords, tenants and buyer agents in Australia. By using the platform, you agree to these Terms.</p>
+            <p>Houzeey Pty Ltd ("Houzeey", "we", "our") operates an online platform that connects Australian property buyers and private owners selling their homes. Agency and buyer-agent listings are not accepted. By using the platform, you agree to these Terms.</p>
 
             <h2>2. Eligibility</h2>
             <p>You must be 18 years or older and legally capable of entering contracts under Australian law to use Houzeey. By registering, you confirm this.</p>
@@ -29,17 +29,18 @@ export default function Terms() {
               <li>All information provided is accurate and not misleading</li>
               <li>You will comply with all applicable Australian consumer law obligations</li>
               <li>You will not list properties you do not have rights over</li>
+              <li>You will provide contact details for your solicitor or conveyancer to review the listing before it is published</li>
             </ul>
-            <p>Houzeey may remove listings at its discretion without notice if they breach these Terms or applicable laws.</p>
+            <p>A listing remains unpublished until the nominated legal representative submits an attestation. Houzeey records the response but does not independently verify the representative's registration, ownership, title, source documents or the truth of listing information. Houzeey may remove listings at its discretion without notice if they breach these Terms or applicable laws.</p>
 
             <h2>5. Offers and Transactions</h2>
             <p>Houzeey provides tools for submitting, negotiating and accepting offers. However, an offer submitted through Houzeey is <em>not</em> legally binding until a formal contract is signed by both parties and witnessed appropriately. Houzeey's letter of offer tool is for indicative purposes only and does not constitute a binding contract of sale.</p>
 
-            <h2>6. Rental Applications</h2>
-            <p>Landlords agree to handle tenant personal data in compliance with the Privacy Act 1988 (Cth) and applicable state tenancy laws. Tenant information must only be used for the purpose of assessing rental applications.</p>
+            <h2>6. Professional Review</h2>
+            <p>A solicitor or conveyancer review is an attestation submitted through a secure invitation link. It is not a title search, legal opinion from Houzeey, guarantee of ownership, or substitute for a buyer's own due diligence and legal advice.</p>
 
             <h2>7. Payments</h2>
-            <p>Any payments made through Houzeey (including rent payments, application fees, or subscription fees) are processed securely. Houzeey does not hold client money in connection with property transactions. Bond lodgement must be handled through the relevant state/territory bond authority.</p>
+            <p>Houzeey does not hold deposit or settlement funds in connection with a property sale. Buyers and sellers must arrange payments and settlement through their own legal and financial representatives.</p>
 
             <h2>8. Identity Verification</h2>
             <p>ID documents submitted for identity verification are used solely for verification purposes and stored securely. We do not share your ID with third parties except as required by law.</p>

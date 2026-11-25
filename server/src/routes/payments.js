@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { v4 as uuidv4 } from 'uuid'
+import { randomUUID } from 'node:crypto'
 import pool from '../db.js'
 import { requireAuth } from '../middleware/auth.js'
 
@@ -63,7 +63,7 @@ router.post('/', requireAuth, async (req, res) => {
   try {
     // NOTE: Real payment processing (Stripe etc.) would go here.
     // For now we record the payment as paid directly.
-    const receipt_id = `REC-${uuidv4().slice(0, 8).toUpperCase()}`
+    const receipt_id = `REC-${randomUUID().slice(0, 8).toUpperCase()}`
 
     const result = await pool.query(`
       INSERT INTO payments (lease_id, user_id, listing_id, amount, method, status, receipt_id, due_date, paid_at)

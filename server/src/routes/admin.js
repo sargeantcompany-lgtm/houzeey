@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import pool from '../db.js'
 import { requireAuth } from '../middleware/auth.js'
+import { signDocumentFields } from '../services/imageStorage.js'
 
 const router = Router()
 
@@ -15,7 +16,7 @@ router.get('/stats', requireAuth, requireAdmin, async (req, res) => {
   try {
     const [users, listings, offers, applications, reviews, contacts] = await Promise.all([
       pool.query('SELECT COUNT(*) FROM users'),
-      pool.query("SELECT COUNT(*) FROM listings WHERE status = 'active'"),
+      pool.query("SELECT COUNT(*) FROM listings l JOIN users u ON u.id = l.user_id WHERE l.status = 'active' AND l.type = 'sale' AND u.role <> 'buyer_agent' AND u.verified = TRUE"),
       pool.query('SELECT COUNT(*) FROM offers'),
       pool.query('SELECT COUNT(*) FROM rental_applications'),
       pool.query('SELECT COUNT(*) FROM reviews'),
@@ -28,6 +29,12 @@ router.get('/stats', requireAuth, requireAdmin, async (req, res) => {
     const pendingOffers = await pool.query(
       "SELECT COUNT(*) FROM offers WHERE status = 'pending'"
     )
+    const pendingSolicitorReviews = await pool.query(`
+      SELECT COUNT(*)
+      FROM solicitor_reviews sr
+      JOIN listings l ON l.id = sr.listing_id
+      WHERE sr.status = 'pending' AND sr.expires_at > NOW() AND l.status = 'pending_review'
+    `)
 
     res.json({
       total_users: parseInt(users.rows[0].count),
@@ -38,6 +45,7 @@ router.get('/stats', requireAuth, requireAdmin, async (req, res) => {
       total_contacts: parseInt(contacts.rows[0].count),
       pending_verifications: parseInt(pendingVerifications.rows[0].count),
       pending_offers: parseInt(pendingOffers.rows[0].count),
+      pending_solicitor_reviews: parseInt(pendingSolicitorReviews.rows[0].count),
     })
   } catch (err) {
     console.error(err)
@@ -113,14 +121,26 @@ router.delete('/users/:id', requireAuth, requireAdmin, async (req, res) => {
 router.get('/listings', requireAuth, requireAdmin, async (req, res) => {
   const { status, limit = 50, offset = 0 } = req.query
   try {
-    const conditions = []
+    const conditions = ["l.type = 'sale'", "u.role <> 'buyer_agent'"]
     const params = []
     if (status) { conditions.push(`l.status = $${params.length + 1}`); params.push(status) }
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
     const result = await pool.query(`
-      SELECT l.*, u.name AS owner_name, u.email AS owner_email
+      SELECT l.*, u.name AS owner_name, u.email AS owner_email,
+        sr.status AS solicitor_review_status,
+        sr.solicitor_name, sr.solicitor_firm, sr.registration_number,
+        sr.registration_state, sr.reviewer_name, sr.reviewer_registration_number,
+        sr.reviewed_at, sr.notes AS solicitor_review_notes
       FROM listings l JOIN users u ON l.user_id = u.id
+      LEFT JOIN LATERAL (
+        SELECT status, solicitor_name, solicitor_firm, registration_number,
+          registration_state, reviewer_name, reviewer_registration_number,
+          reviewed_at, notes
+        FROM solicitor_reviews
+        WHERE listing_id = l.id
+        ORDER BY created_at DESC LIMIT 1
+      ) sr ON TRUE
       ${where}
       ORDER BY l.created_at DESC
       LIMIT $${params.length + 1} OFFSET $${params.length + 2}
@@ -137,6 +157,21 @@ router.get('/listings', requireAuth, requireAdmin, async (req, res) => {
 router.put('/listings/:id', requireAuth, requireAdmin, async (req, res) => {
   const { status } = req.body
   try {
+    const current = await pool.query(`
+      SELECT l.status, u.verified,
+        (SELECT sr.status FROM solicitor_reviews sr WHERE sr.listing_id = l.id ORDER BY sr.created_at DESC LIMIT 1) AS solicitor_review_status
+      FROM listings l JOIN users u ON u.id = l.user_id
+      WHERE l.id = $1 AND l.type = 'sale'
+    `, [req.params.id])
+    if (!current.rowCount) return res.status(404).json({ error: 'Listing not found' })
+    if (status === 'active' && (
+      current.rows[0].status === 'pending_review' ||
+      !current.rows[0].verified ||
+      current.rows[0].solicitor_review_status !== 'approved'
+    )) {
+      return res.status(409).json({ error: 'This listing must be approved by its nominated solicitor before publication.' })
+    }
+
     const result = await pool.query(
       'UPDATE listings SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
       [status, req.params.id]
@@ -170,7 +205,7 @@ router.get('/verifications', requireAuth, requireAdmin, async (req, res) => {
       WHERE iv.status = 'pending'
       ORDER BY iv.created_at ASC
     `)
-    res.json(result.rows)
+    res.json(result.rows.map(row => signDocumentFields(row, ['document_url', 'selfie_url'])))
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Failed to fetch verifications' })

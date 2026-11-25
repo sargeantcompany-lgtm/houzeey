@@ -10,11 +10,18 @@ router.get('/', requireAuth, async (req, res) => {
     const result = await pool.query(`
       SELECT
         l.*,
+        sr.status AS solicitor_review_status,
         (SELECT url FROM listing_images WHERE listing_id = l.id ORDER BY display_order LIMIT 1) AS primary_image,
         sl.created_at AS saved_at
       FROM saved_listings sl
       JOIN listings l ON sl.listing_id = l.id
-      WHERE sl.user_id = $1
+      JOIN users u ON u.id = l.user_id
+      LEFT JOIN LATERAL (
+        SELECT status FROM solicitor_reviews
+        WHERE listing_id = l.id ORDER BY created_at DESC LIMIT 1
+      ) sr ON TRUE
+      WHERE sl.user_id = $1 AND l.type = 'sale' AND l.status = 'active'
+        AND u.role IN ('buyer', 'seller') AND u.verified = TRUE AND sr.status = 'approved'
       ORDER BY sl.created_at DESC
     `, [req.user.id])
     res.json(result.rows)
@@ -27,6 +34,19 @@ router.get('/', requireAuth, async (req, res) => {
 // POST /api/saved/:listing_id — save a listing
 router.post('/:listing_id', requireAuth, async (req, res) => {
   try {
+    const listing = await pool.query(`
+      SELECT l.id
+      FROM listings l
+      JOIN users u ON u.id = l.user_id
+      LEFT JOIN LATERAL (
+        SELECT status FROM solicitor_reviews
+        WHERE listing_id = l.id ORDER BY created_at DESC LIMIT 1
+      ) sr ON TRUE
+      WHERE l.id = $1 AND l.type = 'sale' AND l.status = 'active'
+        AND u.role IN ('buyer', 'seller') AND u.verified = TRUE AND sr.status = 'approved'
+    `, [req.params.listing_id])
+    if (!listing.rowCount) return res.status(404).json({ error: 'Published private sale listing not found.' })
+
     await pool.query(
       'INSERT INTO saved_listings (user_id, listing_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
       [req.user.id, req.params.listing_id]

@@ -1,29 +1,34 @@
 import nodemailer from 'nodemailer'
 
+export function isEmailConfigured() {
+  return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS)
+}
+
 function getTransport() {
-  if (process.env.SMTP_HOST) {
-    return nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT || '587'),
-      secure: process.env.SMTP_SECURE === 'true',
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    })
+  if (!isEmailConfigured()) {
+    throw new Error('Email delivery is unavailable because SMTP is not configured.')
   }
-  // No SMTP configured — log to console
-  return null
+
+  return nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: parseInt(process.env.SMTP_PORT || '587'),
+    secure: process.env.SMTP_SECURE === 'true',
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+  })
 }
 
 export async function sendEmail({ to, subject, html, text }) {
-  const transport = getTransport()
-
-  if (!transport) {
-    console.log(`[EMAIL] To: ${to} | Subject: ${subject}`)
-    console.log(`[EMAIL] Body: ${text || html?.replace(/<[^>]+>/g, ' ')}`)
+  // Local development without SMTP: log the email (including any links) instead of failing.
+  // Production still fails so nothing is silently skipped.
+  if (!isEmailConfigured() && process.env.NODE_ENV !== 'production') {
+    console.log(`[email not sent — SMTP not configured]\nTo: ${to}\nSubject: ${subject}\n${text || html}\n`)
     return
   }
+
+  const transport = getTransport()
 
   await transport.sendMail({
     from: process.env.SMTP_FROM || `"Houzeey" <no-reply@houzeey.com>`,

@@ -6,9 +6,7 @@ import './Auth.css'
 
 const ROLES = [
   { value: 'buyer', label: 'Buyer — looking to purchase' },
-  { value: 'renter', label: 'Renter — looking to rent' },
   { value: 'seller', label: 'Seller — listing my property for sale' },
-  { value: 'landlord', label: 'Landlord — listing a rental' },
 ]
 
 export default function Register() {
@@ -44,7 +42,7 @@ export default function Register() {
           <img src={logo} alt="Houzeey" className="auth-logo-img" />
         </Link>
         <h1>Create your account</h1>
-        <p className="auth-sub">Start buying, selling or renting — fee free</p>
+        <p className="auth-sub">Buy or sell property directly with private owners.</p>
 
         <form onSubmit={handleSubmit} className="auth-form">
           {error && <p className="auth-error">{error}</p>}

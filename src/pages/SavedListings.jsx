@@ -18,9 +18,12 @@ export default function SavedListings() {
     } catch { /* ignore */ }
   }
 
-  const formatPrice = (p, type) => {
-    if (!p) return 'Contact agent'
-    return type === 'rent' ? `$${Number(p).toLocaleString()}/wk` : `$${Number(p).toLocaleString()}`
+  const formatPrice = listing => {
+    if (listing.price_display === 'contact' || !listing.price || Number(listing.price) === 0) return 'Price on request'
+    if (listing.price_display === 'range' && listing.price_max) {
+      return `$${Number(listing.price).toLocaleString()} – $${Number(listing.price_max).toLocaleString()}`
+    }
+    return `$${Number(listing.price).toLocaleString()}`
   }
 
   return (
@@ -39,7 +42,6 @@ export default function SavedListings() {
             <h3>No saved properties yet</h3>
             <p>Heart a property while browsing to save it here.</p>
             <Link to="/buy" className="btn-browse">Browse properties for sale</Link>
-            <Link to="/rent" className="btn-browse-outline">Browse rentals</Link>
           </div>
         ) : (
           <div className="saved-grid">
@@ -50,10 +52,10 @@ export default function SavedListings() {
                   <div className="saved-card-img">
                     <img src={l.primary_image || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=600&q=70'} alt={l.title} />
                     <button className="saved-heart active" onClick={() => handleUnsave(l.listing_id || l.id)} title="Unsave">♥</button>
-                    <span className={`saved-badge ${l.type}`}>{l.type === 'sale' ? 'For Sale' : 'For Rent'}</span>
+                    <span className="saved-badge sale">Private sale</span>
                   </div>
                   <div className="saved-card-body">
-                    <div className="saved-price">{formatPrice(l.price, l.type)}</div>
+                    <div className="saved-price">{formatPrice(l)}</div>
                     <div className="saved-title">{l.title}</div>
                     <div className="saved-address">📍 {l.suburb}, {l.state}</div>
                     <div className="saved-stats">

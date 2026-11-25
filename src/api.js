@@ -28,6 +28,29 @@ const put = (path, body) =>
   request(path, { method: 'PUT', body: body instanceof FormData ? body : JSON.stringify(body) })
 const del = (path) => request(path, { method: 'DELETE' })
 
+function uploadDirectToStorage(uploadUrl, file, contentType, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('PUT', uploadUrl)
+    xhr.setRequestHeader('Content-Type', contentType)
+    xhr.upload.addEventListener('progress', event => {
+      if (event.lengthComputable) onProgress?.(Math.round((event.loaded / event.total) * 100))
+    })
+    xhr.addEventListener('load', () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve()
+      } else {
+        reject(new Error(`Storage upload failed (${xhr.status}). Please retry.`))
+      }
+    })
+    xhr.addEventListener('error', () => {
+      reject(new Error('Could not reach video storage. Check bucket CORS allows this site and PUT uploads.'))
+    })
+    xhr.addEventListener('abort', () => reject(new Error('Video upload was cancelled.')))
+    xhr.send(file)
+  })
+}
+
 export const api = {
   // Auth
   auth: {
@@ -50,7 +73,21 @@ export const api = {
     mine: () => get('/api/listings/my'),
     create: (formData) => post('/api/listings', formData),
     update: (id, data) => put(`/api/listings/${id}`, data),
+    resendSolicitorReview: (id) => post(`/api/listings/${id}/solicitor-review/resend`, {}),
     delete: (id) => del(`/api/listings/${id}`),
+  },
+
+  videos: {
+    feed: (params = {}) => {
+      const qs = new URLSearchParams(Object.entries(params).filter(([, value]) => value)).toString()
+      return get(`/api/videos/feed${qs ? `?${qs}` : ''}`)
+    },
+    mine: () => get('/api/videos/mine'),
+    status: (videoId) => get(`/api/videos/${videoId}/status`),
+    playback: (videoId) => get(`/api/videos/${videoId}/playback`),
+    createUploadUrl: (listingId, data) => post(`/api/videos/listings/${listingId}/upload-url`, data),
+    completeUpload: (videoId) => post(`/api/videos/${videoId}/complete`, {}),
+    uploadDirect: uploadDirectToStorage,
   },
 
   // Conversations + Messages
@@ -95,6 +132,11 @@ export const api = {
   identity: {
     me: () => get('/api/identity/me'),
     submit: (formData) => post('/api/identity', formData),
+  },
+
+  solicitorReviews: {
+    get: (token) => get(`/api/solicitor-reviews/${encodeURIComponent(token)}`),
+    submit: (token, data) => post(`/api/solicitor-reviews/${encodeURIComponent(token)}`, data),
   },
 
   // Inspections

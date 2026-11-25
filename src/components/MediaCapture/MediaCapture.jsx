@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import './MediaCapture.css'
 
-export default function MediaCapture({ onMediaCaptured }) {
+export default function MediaCapture({ onMediaCaptured, videoDisabled = false }) {
   const [mode, setMode] = useState('photo')         // 'photo' | 'video'
   const [streaming, setStreaming] = useState(false)
   const [recording, setRecording] = useState(false)
@@ -22,13 +22,13 @@ export default function MediaCapture({ onMediaCaptured }) {
     setStreaming(false)
   }, [])
 
-  const startCamera = useCallback(async () => {
+  const startCamera = useCallback(async (nextFacingMode = facingMode, nextMode = mode) => {
     stopStream()
     setError(null)
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
-        audio: mode === 'video',
+        video: { facingMode: nextFacingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
+        audio: nextMode === 'video',
       })
       streamRef.current = stream
       if (videoRef.current) {
@@ -36,15 +36,10 @@ export default function MediaCapture({ onMediaCaptured }) {
         videoRef.current.play()
       }
       setStreaming(true)
-    } catch (err) {
+    } catch {
       setError('Camera access denied. Please allow camera permissions and try again.')
     }
   }, [facingMode, mode, stopStream])
-
-  // Restart camera when mode or facing changes
-  useEffect(() => {
-    if (streaming) startCamera()
-  }, [mode, facingMode]) // eslint-disable-line
 
   useEffect(() => {
     return () => stopStream()
@@ -68,12 +63,18 @@ export default function MediaCapture({ onMediaCaptured }) {
   function startRecording() {
     if (!streamRef.current) return
     chunksRef.current = []
-    const recorder = new MediaRecorder(streamRef.current, { mimeType: getSupportedMimeType() })
+    const mimeType = getSupportedMimeType()
+    const recorder = mimeType
+      ? new MediaRecorder(streamRef.current, { mimeType })
+      : new MediaRecorder(streamRef.current)
     recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
     recorder.onstop = () => {
-      const blob = new Blob(chunksRef.current, { type: 'video/mp4' })
+      const type = (recorder.mimeType || chunksRef.current.find(chunk => chunk.type)?.type || 'video/webm')
+        .split(';', 1)[0]
+      const extension = type.toLowerCase().includes('mp4') ? 'mp4' : 'webm'
+      const blob = new Blob(chunksRef.current, { type })
       const url = URL.createObjectURL(blob)
-      const item = { type: 'video', url, blob, name: `video-${Date.now()}.mp4` }
+      const item = { type: 'video', url, blob, name: `video-${Date.now()}.${extension}` }
       setCaptured(prev => [...prev, item])
       onMediaCaptured?.(item)
     }
@@ -100,11 +101,18 @@ export default function MediaCapture({ onMediaCaptured }) {
       <div className="capture-tabs">
         <button
           className={mode === 'photo' ? 'active' : ''}
-          onClick={() => setMode('photo')}
+          onClick={() => {
+            setMode('photo')
+            if (streaming) startCamera(facingMode, 'photo')
+          }}
         >📸 Photo</button>
         <button
           className={mode === 'video' ? 'active' : ''}
-          onClick={() => setMode('video')}
+          onClick={() => {
+            setMode('video')
+            if (streaming) startCamera(facingMode, 'video')
+          }}
+          disabled={videoDisabled}
         >🎥 Video</button>
       </div>
 
@@ -138,7 +146,11 @@ export default function MediaCapture({ onMediaCaptured }) {
             {/* Flip camera */}
             <button
               className="ctrl-btn flip-btn"
-              onClick={() => setFacingMode(f => f === 'environment' ? 'user' : 'environment')}
+              onClick={() => {
+                const nextFacingMode = facingMode === 'environment' ? 'user' : 'environment'
+                setFacingMode(nextFacingMode)
+                if (streaming) startCamera(nextFacingMode, mode)
+              }}
               title="Flip camera"
             >🔄</button>
 
@@ -150,6 +162,7 @@ export default function MediaCapture({ onMediaCaptured }) {
                 className={`record-btn ${recording ? 'recording' : ''}`}
                 onClick={recording ? stopRecording : startRecording}
                 title={recording ? 'Stop recording' : 'Start recording'}
+                disabled={videoDisabled && !recording}
               >
                 {recording ? '⏹' : '⏺'}
               </button>

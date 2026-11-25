@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { getSession } from '../auth'
@@ -31,38 +31,35 @@ export default function Marketing() {
   const [campForm, setCampForm] = useState({ name: '', subject: '', body: '', type: 'email', filter_type: 'all' })
   const [savingCamp, setSavingCamp] = useState(false)
 
-  useEffect(() => {
-    if (!session?.is_admin) { navigate('/'); return }
-    loadAll()
-  }, [])
-
-  useEffect(() => {
-    if (tab === 'contacts') loadContacts()
-  }, [filterType, search])
-
-  async function loadAll() {
-    try {
-      const [c, camps] = await Promise.all([
-        api.marketing.contacts({ type: filterType, search }),
-        api.marketing.campaigns(),
-      ])
-      setContacts(c.contacts)
-      setTotal(c.total)
-      setCampaigns(camps)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  async function loadContacts() {
+  const loadContacts = useCallback(async () => {
     try {
       const c = await api.marketing.contacts({ type: filterType !== 'all' ? filterType : '', search })
       setContacts(c.contacts)
       setTotal(c.total)
-    } catch {}
-  }
+    } catch (err) {
+      setError(err.message || 'Could not load contacts.')
+    }
+  }, [filterType, search])
+
+  useEffect(() => {
+    if (!session?.is_admin) { navigate('/'); return }
+    let current = true
+    api.marketing.campaigns()
+      .then(camps => {
+        if (current) setCampaigns(camps)
+      })
+      .catch(err => {
+        if (current) setError(err.message || 'Could not load campaigns.')
+      })
+      .finally(() => {
+        if (current) setLoading(false)
+      })
+    return () => { current = false }
+  }, [navigate, session?.is_admin])
+
+  useEffect(() => {
+    if (tab === 'contacts') loadContacts()
+  }, [filterType, loadContacts, search, tab])
 
   async function handleAddContact(e) {
     e.preventDefault()

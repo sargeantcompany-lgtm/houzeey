@@ -25,10 +25,12 @@ export default function Marketplace() {
   const [listings, setListings] = useState([])
   const [loading, setLoading] = useState(true)
   const [saved, setSaved] = useState(new Set())
+  const [error, setError] = useState('')
+  const [actionError, setActionError] = useState('')
 
   // Load listings
   useEffect(() => {
-    setLoading(true)
+    let current = true
     const params = {
       type: listingType !== 'all' ? listingType : '',
       state: stateFilter !== 'All' ? stateFilter : '',
@@ -36,9 +38,20 @@ export default function Marketplace() {
       beds: beds !== 'Any' ? beds.replace('+', '') : '',
     }
     api.listings.list(params)
-      .then(data => setListings(data.listings))
-      .catch(() => setListings([]))
-      .finally(() => setLoading(false))
+      .then(data => {
+        if (!current) return
+        setListings(data.listings)
+        setError('')
+      })
+      .catch(requestError => {
+        if (!current) return
+        setListings([])
+        setError(requestError.message || 'Could not load properties.')
+      })
+      .finally(() => {
+        if (current) setLoading(false)
+      })
+    return () => { current = false }
   }, [listingType, stateFilter, propType, beds])
 
   // Load saved listings if logged in
@@ -46,12 +59,19 @@ export default function Marketplace() {
     if (!isLoggedIn()) return
     api.saved.list()
       .then(data => setSaved(new Set(data.map(l => l.id))))
-      .catch(() => {})
+      .catch(requestError => setActionError(requestError.message || 'Could not load saved properties.'))
   }, [])
+
+  function updateFilter(setter, value) {
+    setLoading(true)
+    setError('')
+    setter(value)
+  }
 
   async function toggleSave(id) {
     if (!isLoggedIn()) return
     const isSaved = saved.has(id)
+    setActionError('')
     setSaved(s => {
       const next = new Set(s)
       isSaved ? next.delete(id) : next.add(id)
@@ -59,13 +79,14 @@ export default function Marketplace() {
     })
     try {
       isSaved ? await api.saved.unsave(id) : await api.saved.save(id)
-    } catch {
+    } catch (requestError) {
       // Revert on error
       setSaved(s => {
         const next = new Set(s)
         isSaved ? next.add(id) : next.delete(id)
         return next
       })
+      setActionError(requestError.message || 'Could not update your saved properties.')
     }
   }
 
@@ -94,20 +115,23 @@ export default function Marketplace() {
         <div className="mp-filters">
           <div className="filter-pill-group">
             {[['all','All'], ['sale','For Sale'], ['rent','For Rent']].map(([val, label]) => (
-              <button key={val} className={`pill ${listingType === val ? 'active' : ''}`} onClick={() => setListingType(val)}>{label}</button>
+              <button key={val} className={`pill ${listingType === val ? 'active' : ''}`} onClick={() => updateFilter(setListingType, val)}>{label}</button>
             ))}
           </div>
-          <select value={stateFilter} onChange={e => setStateFilter(e.target.value)}>
+          <select value={stateFilter} onChange={e => updateFilter(setStateFilter, e.target.value)}>
             {STATES.map(s => <option key={s}>{s}</option>)}
           </select>
-          <select value={propType} onChange={e => setPropType(e.target.value)}>
+          <select value={propType} onChange={e => updateFilter(setPropType, e.target.value)}>
             {PROP_TYPES.map(t => <option key={t}>{t}</option>)}
           </select>
-          <select value={beds} onChange={e => setBeds(e.target.value)}>
+          <select value={beds} onChange={e => updateFilter(setBeds, e.target.value)}>
             {BED_OPTIONS.map(b => <option key={b} value={b}>{b === 'Any' ? 'Any beds' : b + ' beds'}</option>)}
           </select>
           {saved.size > 0 && <span className="saved-count">❤ {saved.size} saved</span>}
         </div>
+
+        {error && <div className="error-msg" role="alert">{error}</div>}
+        {actionError && <div className="error-msg" role="alert">{actionError}</div>}
 
         {loading ? (
           <div className="mp-loading">Loading properties…</div>

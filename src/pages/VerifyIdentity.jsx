@@ -53,7 +53,7 @@ export default function VerifyIdentity() {
           <div className="verify-header">
             <div className="verify-icon">🪪</div>
             <h1>Identity Verification</h1>
-            <p>Verify your identity to build trust with buyers, sellers and renters on Houzeey.</p>
+            <p>Verify your identity before creating a private property listing.</p>
           </div>
 
           {status ? (

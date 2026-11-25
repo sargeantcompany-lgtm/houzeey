@@ -2,6 +2,7 @@ import { Router } from 'express'
 import nodemailer from 'nodemailer'
 import pool from '../db.js'
 import { requireAuth } from '../middleware/auth.js'
+import { isEmailConfigured } from '../email.js'
 
 const router = Router()
 
@@ -11,6 +12,10 @@ function requireAdmin(req, res, next) {
 }
 
 function getTransporter() {
+  if (!isEmailConfigured()) {
+    throw new Error('Email delivery is unavailable because SMTP is not configured.')
+  }
+
   return nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
     port: parseInt(process.env.SMTP_PORT) || 587,

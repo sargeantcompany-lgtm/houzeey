@@ -10,11 +10,12 @@ export default function Navbar() {
   const [unread, setUnread] = useState(0)
   const navigate = useNavigate()
   const session = getSession()
+  const sessionId = session?.id
 
   const navLinkClass = ({ isActive }) => isActive ? 'nav-link active' : 'nav-link'
 
   useEffect(() => {
-    if (!session) return
+    if (!sessionId) return
     api.notifications.list()
       .then(d => setUnread(d.unread_count || 0))
       .catch(() => {})
@@ -23,7 +24,7 @@ export default function Navbar() {
       api.notifications.list().then(d => setUnread(d.unread_count || 0)).catch(() => {})
     }, 60000)
     return () => clearInterval(iv)
-  }, [session?.id])
+  }, [sessionId])
 
   function handleLogout() {
     logout()
@@ -38,10 +39,12 @@ export default function Navbar() {
         </Link>
 
         <nav className={`navbar-links ${menuOpen ? 'open' : ''}`}>
+          <NavLink to="/feed" className={navLinkClass} onClick={() => setMenuOpen(false)}>Feed</NavLink>
           <NavLink to="/buy" className={navLinkClass} onClick={() => setMenuOpen(false)}>Buy</NavLink>
-          <NavLink to="/rent" className={navLinkClass} onClick={() => setMenuOpen(false)}>Rent</NavLink>
           <NavLink to="/sell" className={navLinkClass} onClick={() => setMenuOpen(false)}>Sell</NavLink>
+          <NavLink to="/guides" className={navLinkClass} onClick={() => setMenuOpen(false)}>Guides</NavLink>
           {session && <>
+            <NavLink to="/offers" className={navLinkClass} onClick={() => setMenuOpen(false)}>Offers</NavLink>
             <NavLink to="/saved" className={navLinkClass} onClick={() => setMenuOpen(false)}>Saved</NavLink>
           </>}
         </nav>

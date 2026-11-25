@@ -22,6 +22,113 @@
   letter-spacing: -0.02em;
 }
 
+.sell-kicker {
+  display: block;
+  margin-bottom: 8px;
+  color: #4d8990;
+  font-size: .68rem;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.sell-intro {
+  margin: -20px 0 28px;
+  color: #647585;
+  font-size: .88rem;
+  line-height: 1.6;
+}
+
+.sell-identity-pending,
+.sell-identity-gate {
+  padding: 18px;
+  border: 1px solid #dfe7e7;
+  border-radius: 8px;
+  background: #f5f8f7;
+  color: #536871;
+  font-size: .84rem;
+}
+
+.sell-identity-gate strong {
+  color: #17364a;
+  font-size: .94rem;
+}
+
+.sell-identity-gate p {
+  margin: 7px 0 13px;
+  line-height: 1.6;
+}
+
+.sell-identity-gate a {
+  color: #1b6570;
+  font-weight: 700;
+}
+
+.legal-review-step {
+  padding: 18px;
+  border: 1px solid #e1e9e7;
+  border-radius: 8px;
+  background: #fbfcfc;
+}
+
+.legal-review-intro {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.legal-review-icon {
+  display: flex;
+  width: 35px;
+  height: 35px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #e7f1ee;
+  color: #1b6570;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.1rem;
+}
+
+.legal-review-intro h3 {
+  color: #17364a;
+  font-size: 1rem;
+}
+
+.legal-review-intro p {
+  margin-top: 5px;
+  color: #647585;
+  font-size: .8rem;
+  line-height: 1.55;
+}
+
+.legal-review-notice {
+  padding: 13px;
+  border-radius: 6px;
+  background: #edf5f2;
+  color: #46635f;
+}
+
+.legal-review-notice strong {
+  color: #173f42;
+  font-size: .8rem;
+}
+
+.legal-review-notice p,
+.legal-review-notice small {
+  display: block;
+  margin-top: 5px;
+  font-size: .76rem;
+  line-height: 1.55;
+}
+
+.legal-review-notice small {
+  color: #71817e;
+  font-size: .68rem;
+}
+
 /* Progress */
 .sell-progress {
   display: flex;
@@ -206,6 +313,13 @@
   color: var(--text-muted);
   font-style: italic;
   margin: 0;
+}
+
+.upload-progress-message {
+  color: var(--green-dark);
+  font-size: 0.88rem;
+  font-weight: 700;
+  margin: 14px 0 0;
 }
 
 /* Price preview */

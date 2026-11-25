@@ -112,15 +112,19 @@ router.post('/', requireAuth, async (req, res) => {
     inclusions, exclusions, conditions,
   } = req.body
 
-  if (!listing_id || !offer_price) {
-    return res.status(400).json({ error: 'listing_id and offer_price are required' })
+  if (!listing_id || !Number.isFinite(Number(offer_price)) || Number(offer_price) <= 0) {
+    return res.status(400).json({ error: 'listing_id and a positive offer_price are required' })
   }
 
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
 
-    const listing = await client.query('SELECT user_id FROM listings WHERE id = $1', [listing_id])
+    // Only published listings can receive offers (not ones awaiting solicitor review, sold, etc.)
+    const listing = await client.query(
+      "SELECT user_id FROM listings WHERE id = $1 AND status = 'active' AND type = 'sale'",
+      [listing_id]
+    )
     if (listing.rows.length === 0) {
       await client.query('ROLLBACK')
       return res.status(404).json({ error: 'Listing not found' })
@@ -164,21 +168,39 @@ router.post('/', requireAuth, async (req, res) => {
   }
 })
 
-// POST /api/offers/:id/counter — seller counters an offer
+// POST /api/offers/:id/counter — either party counters the latest offer
 router.post('/:id/counter', requireAuth, async (req, res) => {
   const { offer_price, settlement_date, finance_clause, building_inspection, conditions, note } = req.body
+
+  if (offer_price !== undefined && offer_price !== null && offer_price !== '' &&
+      (!Number.isFinite(Number(offer_price)) || Number(offer_price) <= 0)) {
+    return res.status(400).json({ error: 'Counter offer price must be greater than zero' })
+  }
 
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
 
     const offerRes = await client.query('SELECT * FROM offers WHERE id = $1 FOR UPDATE', [req.params.id])
-    if (offerRes.rows.length === 0) return res.status(404).json({ error: 'Offer not found' })
+    if (offerRes.rows.length === 0) {
+      await client.query('ROLLBACK')
+      return res.status(404).json({ error: 'Offer not found' })
+    }
 
     const offer = offerRes.rows[0]
-    if (offer.seller_id !== req.user.id) return res.status(403).json({ error: 'Only seller can counter' })
+    if (![offer.buyer_id, offer.seller_id].includes(req.user.id)) {
+      await client.query('ROLLBACK')
+      return res.status(403).json({ error: 'Not authorised' })
+    }
+
+    const actorRole = offer.buyer_id === req.user.id ? 'buyer' : 'seller'
     if (!['pending', 'countered'].includes(offer.status)) {
+      await client.query('ROLLBACK')
       return res.status(400).json({ error: 'Offer cannot be countered in its current state' })
+    }
+    if (offer.current_offer_by === actorRole) {
+      await client.query('ROLLBACK')
+      return res.status(400).json({ error: 'Wait for the other party to respond before countering' })
     }
 
     await client.query(`
@@ -187,18 +209,18 @@ router.post('/:id/counter', requireAuth, async (req, res) => {
         finance_clause = COALESCE($3, finance_clause),
         building_inspection = COALESCE($4, building_inspection),
         conditions = COALESCE($5, conditions),
-        status = 'countered', current_offer_by = 'seller', updated_at = NOW()
-      WHERE id = $6
+        status = 'countered', current_offer_by = $6, updated_at = NOW()
+      WHERE id = $7
     `, [offer_price || null, settlement_date || null, finance_clause, building_inspection,
-        conditions || null, offer.id])
+        conditions ?? null, actorRole, offer.id])
 
     await client.query(`
       INSERT INTO offer_history (offer_id, made_by, made_by_role, offer_price, settlement_date,
         finance_clause, building_inspection, conditions, note, action)
-      VALUES ($1,$2,'seller',$3,$4,$5,$6,$7,$8,'countered')
-    `, [offer.id, req.user.id, offer_price || offer.offer_price, settlement_date || offer.settlement_date,
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'countered')
+    `, [offer.id, req.user.id, actorRole, offer_price ?? offer.offer_price, settlement_date || offer.settlement_date,
         finance_clause ?? offer.finance_clause, building_inspection ?? offer.building_inspection,
-        conditions || offer.conditions, note || null])
+        conditions ?? offer.conditions, note || null])
 
     await client.query('COMMIT')
     const updated = await pool.query('SELECT * FROM offers WHERE id = $1', [req.params.id])
@@ -219,11 +241,26 @@ router.post('/:id/accept', requireAuth, async (req, res) => {
     await client.query('BEGIN')
 
     const offerRes = await client.query('SELECT * FROM offers WHERE id = $1 FOR UPDATE', [req.params.id])
-    if (offerRes.rows.length === 0) return res.status(404).json({ error: 'Offer not found' })
+    if (offerRes.rows.length === 0) {
+      await client.query('ROLLBACK')
+      return res.status(404).json({ error: 'Offer not found' })
+    }
 
     const offer = offerRes.rows[0]
-    if (offer.seller_id !== req.user.id) return res.status(403).json({ error: 'Only seller can accept' })
-    if (offer.status === 'accepted') return res.status(400).json({ error: 'Already accepted' })
+    if (![offer.buyer_id, offer.seller_id].includes(req.user.id)) {
+      await client.query('ROLLBACK')
+      return res.status(403).json({ error: 'Not authorised' })
+    }
+
+    const actorRole = offer.buyer_id === req.user.id ? 'buyer' : 'seller'
+    if (!['pending', 'countered'].includes(offer.status)) {
+      await client.query('ROLLBACK')
+      return res.status(400).json({ error: 'Offer cannot be accepted in its current state' })
+    }
+    if (offer.current_offer_by === actorRole) {
+      await client.query('ROLLBACK')
+      return res.status(400).json({ error: 'You cannot accept an offer you made' })
+    }
 
     await client.query(
       "UPDATE offers SET status = 'accepted', updated_at = NOW() WHERE id = $1",
@@ -232,8 +269,8 @@ router.post('/:id/accept', requireAuth, async (req, res) => {
 
     await client.query(`
       INSERT INTO offer_history (offer_id, made_by, made_by_role, offer_price, action)
-      VALUES ($1, $2, 'seller', $3, 'accepted')
-    `, [offer.id, req.user.id, offer.offer_price])
+      VALUES ($1, $2, $3, $4, 'accepted')
+    `, [offer.id, req.user.id, actorRole, offer.offer_price])
 
     // Auto-create settlement milestones
     const milestones = [
@@ -275,6 +312,9 @@ router.post('/:id/reject', requireAuth, async (req, res) => {
 
     const offer = offerRes.rows[0]
     if (offer.seller_id !== req.user.id) return res.status(403).json({ error: 'Only seller can reject' })
+    if (!['pending', 'countered'].includes(offer.status) || offer.current_offer_by === 'seller') {
+      return res.status(400).json({ error: 'Offer cannot be rejected in its current state' })
+    }
 
     await pool.query("UPDATE offers SET status = 'rejected', updated_at = NOW() WHERE id = $1", [offer.id])
     await pool.query(`
@@ -297,6 +337,9 @@ router.post('/:id/withdraw', requireAuth, async (req, res) => {
 
     const offer = offerRes.rows[0]
     if (offer.buyer_id !== req.user.id) return res.status(403).json({ error: 'Only buyer can withdraw' })
+    if (!['pending', 'countered'].includes(offer.status)) {
+      return res.status(400).json({ error: 'Offer cannot be withdrawn in its current state' })
+    }
 
     await pool.query("UPDATE offers SET status = 'withdrawn', updated_at = NOW() WHERE id = $1", [offer.id])
     await pool.query(`

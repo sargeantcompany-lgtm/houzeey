@@ -6,7 +6,7 @@
 
 .profile-grid {
   display: grid;
-  grid-template-columns: 260px 1fr;
+  grid-template-columns: 260px minmax(0, 1fr);
   gap: 28px;
   align-items: start;
   max-width: 900px;
@@ -334,6 +334,6 @@ label textarea { resize: vertical; }
 .pf-empty { color: var(--text-muted); font-size: 0.9rem; padding: 24px 0; }
 
 @media (max-width: 768px) {
-  .profile-grid { grid-template-columns: 1fr; }
+  .profile-grid { grid-template-columns: minmax(0, 1fr); }
   .profile-card { position: static; }
 }

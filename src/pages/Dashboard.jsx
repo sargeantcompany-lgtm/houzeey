@@ -1,16 +1,24 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { api } from '../api'
 import { getSession } from '../auth'
+import { getVideoMimeType, MAX_VIDEO_UPLOAD_BYTES } from '../videoUpload'
 import './Dashboard.css'
 
-const TABS = ['Overview', 'My Listings', 'Offers', 'Inspections', 'Applications', 'My Applications']
+const TABS = ['Overview', 'My Listings', 'Offers', 'Inspections']
 
 export default function Dashboard() {
   const session = getSession()
-  const [tab, setTab] = useState('Overview')
+  const location = useLocation()
+  const justSubmitted = Boolean(location.state?.listingSubmitted)
+  const [tab, setTab] = useState(justSubmitted ? 'My Listings' : 'Overview')
   const [stats, setStats] = useState(null)
   const [listings, setListings] = useState([])
+  const [videos, setVideos] = useState([])
+  const [videoStatusError, setVideoStatusError] = useState('')
+  const [videoRetryError, setVideoRetryError] = useState('')
+  const [videoRetrying, setVideoRetrying] = useState(null)
+  const [videoRetryProgress, setVideoRetryProgress] = useState(0)
   const [offers, setOffers] = useState([])
   const [inspections, setInspections] = useState([])
   const [applications, setApplications] = useState([])
@@ -18,8 +26,22 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [tabLoading, setTabLoading] = useState(false)
   const [statusUpdating, setStatusUpdating] = useState(null)
+  const [listingError, setListingError] = useState('')
+  const [listingNotice, setListingNotice] = useState(justSubmitted
+    ? 'Listing submitted. We have emailed your solicitor or conveyancer a review link — your listing goes live as soon as they approve it.'
+    : '')
+  const [reviewResending, setReviewResending] = useState(null)
 
   const user = session || {}
+
+  const loadVideoStatuses = useCallback(async () => {
+    try {
+      setVideos(await api.videos.mine())
+      setVideoStatusError('')
+    } catch (error) {
+      setVideoStatusError(error.message || 'Could not load video processing statuses.')
+    }
+  }, [])
 
   // Load core data on mount
   useEffect(() => {
@@ -30,7 +52,14 @@ export default function Dashboard() {
       setStats(s)
       setListings(l)
     }).catch(() => {}).finally(() => setLoading(false))
-  }, [])
+    loadVideoStatuses()
+  }, [loadVideoStatuses])
+
+  useEffect(() => {
+    if (!videos.some(video => ['uploading', 'processing'].includes(video.status))) return undefined
+    const timer = setInterval(loadVideoStatuses, 5000)
+    return () => clearInterval(timer)
+  }, [videos, loadVideoStatuses])
 
   // Lazy-load tab data
   const loadTabData = useCallback(async (t) => {
@@ -60,12 +89,57 @@ export default function Dashboard() {
   }, [])
 
   async function changeStatus(listingId, newStatus) {
+    setListingError('')
+    setListingNotice('')
     setStatusUpdating(listingId)
     try {
       await api.listings.update(listingId, { status: newStatus })
       setListings(prev => prev.map(l => l.id === listingId ? { ...l, status: newStatus } : l))
-    } catch { /* ignore */ } finally {
+    } catch (error) {
+      setListingError(error.message || 'Could not update listing status.')
+    } finally {
       setStatusUpdating(null)
+    }
+  }
+
+  async function resendSolicitorReview(listingId) {
+    setListingError('')
+    setListingNotice('')
+    setReviewResending(listingId)
+    try {
+      await api.listings.resendSolicitorReview(listingId)
+      setListingNotice('Solicitor invitation sent. The listing will remain private until it is approved.')
+    } catch (error) {
+      setListingError(error.message || 'Could not resend the solicitor invitation.')
+    } finally {
+      setReviewResending(null)
+    }
+  }
+
+  async function retryVideoUpload(listingId, file) {
+    const contentType = getVideoMimeType(file)
+    if (!contentType || file.size > MAX_VIDEO_UPLOAD_BYTES) {
+      setVideoRetryError('Choose an MP4, MOV, M4V, or WebM video smaller than 512 MB.')
+      return
+    }
+
+    setVideoStatusError('')
+    setVideoRetryError('')
+    setVideoRetrying(listingId)
+    setVideoRetryProgress(0)
+    try {
+      const upload = await api.videos.createUploadUrl(listingId, {
+        contentType,
+        fileSize: file.size,
+      })
+      await api.videos.uploadDirect(upload.uploadUrl, file, contentType, setVideoRetryProgress)
+      await api.videos.completeUpload(upload.videoId)
+      await loadVideoStatuses()
+    } catch (error) {
+      await loadVideoStatuses()
+      setVideoRetryError(error.message || 'Could not retry the video upload.')
+    } finally {
+      setVideoRetrying(null)
     }
   }
 
@@ -74,6 +148,7 @@ export default function Dashboard() {
     try {
       await api.listings.delete(listingId)
       setListings(prev => prev.filter(l => l.id !== listingId))
+      setVideos(prev => prev.filter(video => video.listing_id !== listingId))
     } catch { /* ignore */ }
   }
 
@@ -87,15 +162,24 @@ export default function Dashboard() {
   const statusColor = (s) => {
     if (s === 'active') return 'status-active'
     if (s === 'under_offer' || s === 'leased') return 'status-pending'
+    if (s === 'pending_review' || s === 'needs_changes') return 'status-pending'
     if (s === 'sold' || s === 'withdrawn') return 'status-closed'
     return ''
   }
 
   const statusLabel = (s) => ({
     active: 'Active', under_offer: 'Under Offer', leased: 'Leased',
+    pending_review: 'Awaiting solicitor review', needs_changes: 'Changes requested',
     sold: 'Sold', withdrawn: 'Withdrawn', pending: 'Pending',
     approved: 'Approved', rejected: 'Rejected',
   })[s] || s
+  const videoLabel = (status) => ({
+    uploading: 'Waiting for upload',
+    processing: 'Processing',
+    ready: 'Ready',
+    failed: 'Failed',
+  })[status] || status
+  const videosByListingId = new Map(videos.map(video => [video.listing_id, video]))
 
   return (
     <div className="dashboard-page">
@@ -169,10 +253,6 @@ export default function Dashboard() {
                     <span className="quick-link-icon">🤝</span>
                     <span>Offers received</span>
                   </button>
-                  <button className="quick-link-card" onClick={() => handleTabClick('Applications')}>
-                    <span className="quick-link-icon">📄</span>
-                    <span>Applications</span>
-                  </button>
                 </div>
               </section>
             )}
@@ -189,13 +269,41 @@ export default function Dashboard() {
                   <p className="dash-empty">No listings yet. <Link to="/sell">Create your first listing</Link></p>
                 ) : (
                   <div className="listings-table">
+                    {listingError && <p className="error-msg" role="alert">{listingError}</p>}
+                    {listingNotice && <p className="success-msg" role="status">{listingNotice}</p>}
+                    {videoStatusError && <p className="error-msg" role="alert">{videoStatusError}</p>}
+                    {videoRetryError && <p className="error-msg" role="alert">{videoRetryError}</p>}
                     {listings.map(l => (
                       <div key={l.id} className="listing-row listing-row-owner">
                         <div className="listing-row-info">
-                          <span className={`listing-badge ${l.type}`}>{l.type === 'sale' ? 'For Sale' : 'For Rent'}</span>
+                          <span className="listing-badge sale">Private sale</span>
                           <div>
                             <div className="listing-row-title">{l.title}</div>
                             <div className="listing-row-sub">{l.suburb}, {l.state} &nbsp;·&nbsp; ${Number(l.price).toLocaleString()}{l.type === 'rent' ? '/wk' : ''}</div>
+                            {videosByListingId.has(l.id) && (
+                              <>
+                                <div className={`video-processing-status video-status-${videosByListingId.get(l.id).status}`}>
+                                  Video: {videoLabel(videosByListingId.get(l.id).status)}
+                                  {videosByListingId.get(l.id).error && <span>{videosByListingId.get(l.id).error}</span>}
+                                </div>
+                                {['failed', 'uploading'].includes(videosByListingId.get(l.id).status) && (
+                                  <label className={`btn-row-action btn-video-retry ${videoRetrying === l.id ? 'is-uploading' : ''}`}>
+                                    {videoRetrying === l.id ? `Uploading ${videoRetryProgress}%…` : 'Retry video upload'}
+                                    <input
+                                      className="video-retry-input"
+                                      type="file"
+                                      accept="video/mp4,video/quicktime,video/webm,video/x-m4v,.mp4,.mov,.webm,.m4v"
+                                      disabled={videoRetrying === l.id}
+                                      onChange={event => {
+                                        const file = event.target.files?.[0]
+                                        if (file) retryVideoUpload(l.id, file)
+                                        event.target.value = ''
+                                      }}
+                                    />
+                                  </label>
+                                )}
+                              </>
+                            )}
                           </div>
                         </div>
 
@@ -208,18 +316,29 @@ export default function Dashboard() {
                         <div className="listing-row-actions">
                           <Link to={`/listing/${l.id}/edit`} className="btn-row-action btn-edit">Edit</Link>
                           <Link to={`/listing/${l.id}`} className="btn-row-action btn-view">View</Link>
-                          <select
-                            className="status-select"
-                            value={l.status}
-                            disabled={statusUpdating === l.id}
-                            onChange={e => changeStatus(l.id, e.target.value)}
-                          >
-                            <option value="active">Active</option>
-                            <option value="under_offer">Under Offer</option>
-                            <option value="leased">Leased</option>
-                            <option value="sold">Sold</option>
-                            <option value="withdrawn">Withdrawn</option>
-                          </select>
+                          {l.status === 'pending_review' && (
+                            <button
+                              className="btn-row-action btn-review"
+                              disabled={reviewResending === l.id}
+                              onClick={() => resendSolicitorReview(l.id)}
+                            >
+                              {reviewResending === l.id ? 'Sending…' : 'Resend solicitor invite'}
+                            </button>
+                          )}
+                          {['active', 'under_offer'].includes(l.status) && (
+                            <select
+                              className="status-select"
+                              value={l.status}
+                              disabled={statusUpdating === l.id}
+                              onChange={e => changeStatus(l.id, e.target.value)}
+                            >
+                              {l.status === 'active' && <option value="active">Active</option>}
+                              {l.status === 'under_offer' && <option value="under_offer">Under Offer</option>}
+                              {l.status === 'active' && <option value="under_offer">Under Offer</option>}
+                              <option value="sold">Sold</option>
+                              <option value="withdrawn">Withdrawn</option>
+                            </select>
+                          )}
                           <button className="btn-row-action btn-delete" onClick={() => deleteListing(l.id)}>Delete</button>
                         </div>
                       </div>

@@ -14,7 +14,7 @@ function formatDt(dt) {
 export default function Inspections() {
   const { listingId } = useParams()
   const navigate = useNavigate()
-  const session = getSession()
+  const userId = getSession()?.id
 
   const [slots, setSlots] = useState([])
   const [myInspections, setMyInspections] = useState([])
@@ -26,26 +26,33 @@ export default function Inspections() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
-  const isOwner = listing && session?.id === listing.user_id
+  const isOwner = listing && userId === listing.user_id
 
   useEffect(() => {
+    let current = true
     const promises = [
       api.listings.get(listingId),
       api.inspections.slots(listingId),
     ]
-    if (session) {
+    if (userId) {
       promises.push(api.inspections.mine())
     }
 
     Promise.all(promises)
       .then(([l, s, mine]) => {
+        if (!current) return
         setListing(l)
         setSlots(s)
         if (mine) setMyInspections(mine)
       })
-      .catch(() => {})
-      .finally(() => setLoading(false))
-  }, [listingId])
+      .catch(requestError => {
+        if (current) setError(requestError.message || 'Could not load inspection details.')
+      })
+      .finally(() => {
+        if (current) setLoading(false)
+      })
+    return () => { current = false }
+  }, [listingId, userId])
 
   async function handleAddSlots(e) {
     e.preventDefault()
@@ -91,7 +98,7 @@ export default function Inspections() {
   }
 
   if (loading) return <div className="container"><p className="loading-text">Loading…</p></div>
-  if (!listing) return <div className="container"><p>Listing not found.</p></div>
+  if (!listing) return <div className="container"><p role="alert">{error || 'Listing not found.'}</p></div>
 
   return (
     <div className="inspections-page">
@@ -138,7 +145,7 @@ export default function Inspections() {
               {slots.map(slot => (
                 <div key={slot.id} className="slot-card">
                   <div className="slot-datetime">{formatDt(slot.datetime)}</div>
-                  {!isOwner && session && (
+                  {!isOwner && userId && (
                     <button
                       className="btn-primary-sm"
                       onClick={() => handleBook(slot.id)}
@@ -147,7 +154,7 @@ export default function Inspections() {
                       {booking === slot.id ? 'Booking…' : 'Book Inspection'}
                     </button>
                   )}
-                  {!session && (
+                  {!userId && (
                     <button className="btn-outline-sm" onClick={() => navigate('/login')}>Log in to book</button>
                   )}
                 </div>
@@ -157,7 +164,7 @@ export default function Inspections() {
         </div>
 
         {/* My bookings */}
-        {session && myInspections.length > 0 && (
+        {userId && myInspections.length > 0 && (
           <div className="insp-section">
             <h2>My Booked Inspections</h2>
             <div className="my-inspections">

@@ -21,6 +21,11 @@ import adminRoutes from './routes/admin.js'
 import marketingRoutes from './routes/marketing.js'
 import notificationRoutes from './routes/notifications.js'
 import supportRoutes from './routes/support.js'
+import solicitorReviewRoutes from './routes/solicitorReviews.js'
+import videoRoutes from './routes/videos.js'
+import { runMigrations } from './migrations.js'
+import { createDownloadUrl } from './services/videoStorage.js'
+import { isValidImageSignature } from './services/imageStorage.js'
 
 dotenv.config()
 
@@ -86,6 +91,27 @@ async function initDb() {
     );`)
   await pool.query(`ALTER TABLE listing_images ADD COLUMN IF NOT EXISTS data TEXT;`)
   await pool.query(`ALTER TABLE listing_images ADD COLUMN IF NOT EXISTS mimetype VARCHAR(50);`)
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS solicitor_reviews (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      listing_id UUID NOT NULL REFERENCES listings(id) ON DELETE CASCADE,
+      solicitor_name VARCHAR(255) NOT NULL,
+      solicitor_firm VARCHAR(255) NOT NULL,
+      solicitor_email VARCHAR(255) NOT NULL,
+      solicitor_phone VARCHAR(50),
+      registration_number VARCHAR(100) NOT NULL,
+      registration_state VARCHAR(3) NOT NULL,
+      token_hash VARCHAR(64) UNIQUE NOT NULL,
+      status VARCHAR(30) NOT NULL DEFAULT 'pending',
+      reviewer_name VARCHAR(255),
+      reviewer_registration_number VARCHAR(100),
+      notes TEXT,
+      expires_at TIMESTAMPTZ NOT NULL,
+      reviewed_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );`)
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_solicitor_reviews_listing ON solicitor_reviews(listing_id, created_at DESC);`)
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS conversations (
@@ -368,6 +394,7 @@ async function initDb() {
       created_at TIMESTAMPTZ DEFAULT NOW()
     );`)
 
+  await runMigrations()
   console.log('Database tables ready')
 }
 
@@ -377,25 +404,40 @@ const __dirname = path.dirname(__filename)
 const app = express()
 const PORT = process.env.PORT || 3001
 
+// Railway (and most hosts) sit behind one proxy hop. Without this, every visitor
+// shares the proxy's IP and therefore one rate-limit bucket.
+app.set('trust proxy', 1)
+
 // Rate limiting
+// Strict limit only for credential attempts (login, register, password reset).
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 20,
+  skip: req => req.method === 'GET' || req.path === '/me',
   message: { error: 'Too many attempts, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
 })
 
+// General per-visitor limit. Image redirects and health checks are excluded so a
+// page full of listing photos doesn't use up a visitor's allowance.
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 300,
+  max: 1500,
+  skip: req => req.path.startsWith('/api/images/') || req.path === '/health',
   message: { error: 'Too many requests, please slow down.' },
   standardHeaders: true,
   legacyHeaders: false,
 })
 
+// CLIENT_URL may list several origins separated by commas (e.g. www and apex domains).
+const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
+  .split(',')
+  .map(origin => origin.trim().replace(/\/$/, ''))
+  .filter(Boolean)
+
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: allowedOrigins.length === 1 ? allowedOrigins[0] : allowedOrigins,
   credentials: true,
 }))
 
@@ -424,15 +466,28 @@ app.use('/api/admin', adminRoutes)
 app.use('/api/marketing', marketingRoutes)
 app.use('/api/notifications', notificationRoutes)
 app.use('/api/support', supportRoutes)
+app.use('/api/solicitor-reviews', solicitorReviewRoutes)
+app.use('/api/videos', videoRoutes)
 
 // Serve images from DB
 app.get('/api/images/:id', async (req, res) => {
   try {
-    const result = await pool.query('SELECT data, mimetype FROM listing_images WHERE id = $1', [req.params.id])
-    if (result.rows.length === 0 || !result.rows[0].data) return res.status(404).end()
-    const { data, mimetype } = result.rows[0]
+    const result = await pool.query('SELECT data, mimetype, storage_key, is_private FROM listing_images WHERE id = $1', [req.params.id])
+    if (result.rows.length === 0) return res.status(404).end()
+    const { data, mimetype, storage_key: storageKey, is_private: isPrivate } = result.rows[0]
+    // ID and application documents need a short-lived signed link issued by an authorised endpoint.
+    if (isPrivate && !isValidImageSignature(req.params.id, req.query.expires, req.query.sig)) {
+      return res.status(404).end()
+    }
+    if (storageKey) {
+      // Bucket-stored image: redirect to a short-lived signed URL so bytes never pass through the API.
+      const signedUrl = await createDownloadUrl(storageKey, mimetype, isPrivate ? 5 * 60 : 60 * 60)
+      res.setHeader('Cache-Control', isPrivate ? 'private, no-store' : 'private, max-age=3000')
+      return res.redirect(302, signedUrl)
+    }
+    if (!data) return res.status(404).end()
     res.setHeader('Content-Type', mimetype || 'image/jpeg')
-    res.setHeader('Cache-Control', 'public, max-age=31536000')
+    res.setHeader('Cache-Control', isPrivate ? 'private, no-store' : 'public, max-age=31536000')
     res.send(Buffer.from(data, 'base64'))
   } catch {
     res.status(500).end()
