@@ -4,7 +4,7 @@ import { body, validationResult } from 'express-validator'
 import pool from '../db.js'
 import { requireAuth, optionalAuth } from '../middleware/auth.js'
 import { upload } from '../middleware/upload.js'
-import { saveImage, imageUrl } from '../services/imageStorage.js'
+import { saveImage } from '../services/imageStorage.js'
 import { sendEmail } from '../email.js'
 
 const router = Router()
