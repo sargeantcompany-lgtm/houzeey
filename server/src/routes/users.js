@@ -9,7 +9,7 @@ const router = Router()
 router.get('/me/stats', requireAuth, async (req, res) => {
   try {
     const [listings, views, enquiries, payments] = await Promise.all([
-      pool.query("SELECT COUNT(*) FROM listings WHERE user_id = $1 AND status = 'active'", [req.user.id]),
+      pool.query("SELECT COUNT(*) FROM listings WHERE user_id = $1 AND status = 'active' AND type = 'sale'", [req.user.id]),
       pool.query('SELECT COALESCE(SUM(views), 0) FROM listings WHERE user_id = $1', [req.user.id]),
       pool.query(`
         SELECT COUNT(*) FROM messages m

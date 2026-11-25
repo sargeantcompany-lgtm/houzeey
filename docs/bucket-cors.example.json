@@ -1,0 +1,15 @@
+{
+  "CORSRules": [
+    {
+      "AllowedHeaders": ["*"],
+      "AllowedMethods": ["GET", "HEAD", "PUT"],
+      "AllowedOrigins": [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "https://houzeey.com",
+        "https://www.houzeey.com"
+      ],
+      "MaxAgeSeconds": 3000
+    }
+  ]
+}

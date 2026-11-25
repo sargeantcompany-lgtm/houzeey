@@ -1,11 +1,11 @@
 import multer from 'multer'
 
 const fileFilter = (_, file, cb) => {
-  const allowed = ['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm']
+  const allowed = ['image/jpeg', 'image/png', 'image/webp']
   if (allowed.includes(file.mimetype)) {
     cb(null, true)
   } else {
-    cb(new Error('Only images and videos are allowed'), false)
+    cb(new Error('Only JPEG, PNG, and WebP images are allowed'), false)
   }
 }
 

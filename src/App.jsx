@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/layout/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
 import Home from './pages/Home'
@@ -9,14 +9,12 @@ import ListingDetail from './pages/ListingDetail'
 import Dashboard from './pages/Dashboard'
 import Messages from './pages/Messages'
 import Sell from './pages/Sell'
-import Marketplace from './pages/Marketplace'
 import Payments from './pages/Payments'
 import NotFound from './pages/NotFound'
 import VerifyIdentity from './pages/VerifyIdentity'
 import Inspections from './pages/Inspections'
 import Offers from './pages/Offers'
 import Settlement from './pages/Settlement'
-import RentalApplication from './pages/RentalApplication'
 import Admin from './pages/Admin'
 import Marketing from './pages/Marketing'
 import EditListing from './pages/EditListing'
@@ -28,6 +26,9 @@ import ResetPassword from './pages/ResetPassword'
 import Support from './pages/Support'
 import Terms from './pages/Terms'
 import Privacy from './pages/Privacy'
+import SolicitorReview from './pages/SolicitorReview'
+import Guides from './pages/Guides'
+import VideoFeed from './pages/VideoFeed'
 
 export default function App() {
   return (
@@ -36,10 +37,12 @@ export default function App() {
         <Route element={<Layout />}>
           {/* Public routes */}
           <Route path="/" element={<Home />} />
+          <Route path="/feed" element={<VideoFeed />} />
           <Route path="/buy" element={<Listings mode="sale" />} />
-          <Route path="/rent" element={<Listings mode="rent" />} />
+          <Route path="/rent" element={<Navigate to="/buy" replace />} />
           <Route path="/listing/:id" element={<ListingDetail />} />
-          <Route path="/marketplace" element={<Marketplace />} />
+          <Route path="/marketplace" element={<Navigate to="/buy" replace />} />
+          <Route path="/guides" element={<Guides />} />
 
           {/* Protected routes */}
           <Route path="/sell" element={<ProtectedRoute><Sell /></ProtectedRoute>} />
@@ -52,7 +55,7 @@ export default function App() {
           <Route path="/offers/:listingId" element={<ProtectedRoute><Offers /></ProtectedRoute>} />
           <Route path="/offers/view/:offerId" element={<ProtectedRoute><Offers /></ProtectedRoute>} />
           <Route path="/settlement/:offerId" element={<ProtectedRoute><Settlement /></ProtectedRoute>} />
-          <Route path="/apply/:listingId" element={<ProtectedRoute><RentalApplication /></ProtectedRoute>} />
+          <Route path="/apply/:listingId" element={<Navigate to="/buy" replace />} />
           <Route path="/listing/:id/edit" element={<ProtectedRoute><EditListing /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/saved" element={<ProtectedRoute><SavedListings /></ProtectedRoute>} />
@@ -65,6 +68,7 @@ export default function App() {
 
           <Route path="*" element={<NotFound />} />
         </Route>
+        <Route path="/solicitor-review/:token" element={<SolicitorReview />} />
         {/* Auth pages outside layout */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />

@@ -22,7 +22,7 @@ export default function Admin() {
   useEffect(() => {
     if (!session?.is_admin) { navigate('/'); return }
     loadAll()
-  }, [])
+  }, [navigate, session?.is_admin])
 
   async function loadAll() {
     try {
@@ -127,10 +127,10 @@ export default function Admin() {
               { label: 'Total Users', val: stats.total_users, icon: '👥' },
               { label: 'Active Listings', val: stats.active_listings, icon: '🏠' },
               { label: 'Total Offers', val: stats.total_offers, icon: '📋' },
-              { label: 'Rental Applications', val: stats.total_applications, icon: '📝' },
               { label: 'Reviews', val: stats.total_reviews, icon: '⭐' },
               { label: 'Marketing Contacts', val: stats.total_contacts, icon: '📧' },
               { label: 'Pending Verifications', val: stats.pending_verifications, icon: '🪪', alert: stats.pending_verifications > 0 },
+              { label: 'Solicitor Reviews', val: stats.pending_solicitor_reviews, icon: '⚖️', alert: stats.pending_solicitor_reviews > 0 },
               { label: 'Pending Offers', val: stats.pending_offers, icon: '⏳' },
             ].map(s => (
               <div key={s.label} className={`admin-stat ${s.alert ? 'admin-stat--alert' : ''}`}>
@@ -194,6 +194,11 @@ export default function Admin() {
                   <div>
                     <div className="listing-title-cell">{l.title || '—'}</div>
                     <div className="listing-location-cell">{l.suburb}, {l.state}</div>
+                    <div className="listing-location-cell">
+                      {l.solicitor_name
+                        ? `${l.solicitor_firm} · ${l.registration_state} ${l.registration_number} · ${l.solicitor_review_status === 'approved' ? `Reviewed by ${l.reviewer_name || l.solicitor_name}` : l.solicitor_review_status || 'Review not submitted'}`
+                        : 'No solicitor review request'}
+                    </div>
                   </div>
                   <span className="listing-owner">{l.owner_name}</span>
                   <span className="listing-type">{l.type}</span>

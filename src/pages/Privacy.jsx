@@ -14,10 +14,11 @@ export default function Privacy() {
             <h2>1. What we collect</h2>
             <p>We collect information you provide directly:</p>
             <ul>
-              <li><strong>Account data:</strong> name, email address, phone number, role (buyer/seller/landlord/tenant/agent)</li>
+              <li><strong>Account data:</strong> name, email address, phone number and buyer or seller account role</li>
               <li><strong>Listing data:</strong> property address, photos, description, price</li>
-              <li><strong>Identity verification:</strong> photo ID document and selfie (stored encrypted)</li>
-              <li><strong>Transaction data:</strong> offer amounts, rental applications, payment records</li>
+              <li><strong>Legal review data:</strong> nominated solicitor or conveyancer contact and registration details, and their review response</li>
+              <li><strong>Identity verification:</strong> photo ID document and optional selfie for manual identity checks</li>
+              <li><strong>Transaction data:</strong> offer amounts and property-sale communications</li>
               <li><strong>Communications:</strong> messages sent through the platform</li>
               <li><strong>Technical data:</strong> IP address, browser type, device information, session logs</li>
             </ul>
@@ -41,13 +42,13 @@ export default function Privacy() {
               <li><strong>Law enforcement:</strong> Where required by law, court order or to prevent fraud/harm</li>
             </ul>
 
-            <h2>4. Identity document storage</h2>
-            <p>ID documents submitted for verification are encrypted at rest, accessed only by authorised staff for verification purposes, and not shared with third parties unless required by law. We retain ID documents for 7 years to comply with AML/CTF obligations, after which they are securely destroyed.</p>
+            <h2>4. Identity and legal review</h2>
+            <p>Identity documents are submitted for manual identity checks and are accessible to authorised Houzeey staff. Solicitor or conveyancer contact details and attestations are used to request and record review of a private-sale listing. Houzeey does not independently verify professional registration through the invitation link. Do not include confidential legal advice in a listing or review note.</p>
 
             <h2>5. Data retention</h2>
             <ul>
               <li>Account data: retained while your account is active and for 3 years after closure</li>
-              <li>Transaction records: 7 years (tax/legal obligations)</li>
+              <li>Property listing and legal-review records: retained while needed to operate the service, resolve disputes and meet legal obligations</li>
               <li>Messages: 2 years</li>
               <li>Marketing contacts: until you unsubscribe or request deletion</li>
             </ul>

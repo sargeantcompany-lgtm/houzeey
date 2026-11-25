@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { api } from '../api'
-import { getSession } from '../auth'
 import './RentalApplication.css'
 
 export default function RentalApplication() {
   const { listingId } = useParams()
   const navigate = useNavigate()
-  const session = getSession()
 
   const [listing, setListing] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -27,7 +25,7 @@ export default function RentalApplication() {
   useEffect(() => {
     api.listings.get(listingId)
       .then(setListing)
-      .catch(() => {})
+      .catch(requestError => setError(requestError.message || 'Could not load listing.'))
       .finally(() => setLoading(false))
   }, [listingId])
 
@@ -59,7 +57,7 @@ export default function RentalApplication() {
   }
 
   if (loading) return <div className="container"><p className="loading-text">Loading…</p></div>
-  if (!listing) return <div className="container"><p>Listing not found.</p></div>
+  if (!listing) return <div className="container"><p role="alert">{error || 'Listing not found.'}</p></div>
 
   if (submitted) {
     return (

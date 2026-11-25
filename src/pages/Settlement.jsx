@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { api } from '../api'
-import { getSession } from '../auth'
 import './Settlement.css'
 
 function fmtDate(d) {
@@ -12,7 +11,6 @@ function fmtDate(d) {
 export default function Settlement() {
   const { offerId } = useParams()
   const navigate = useNavigate()
-  const session = getSession()
 
   const [offer, setOffer] = useState(null)
   const [milestones, setMilestones] = useState([])
@@ -26,7 +24,7 @@ export default function Settlement() {
       api.settlement.get(offerId),
     ])
       .then(([o, m]) => { setOffer(o); setMilestones(m) })
-      .catch(() => {})
+      .catch(requestError => setError(requestError.message || 'Could not load settlement details.'))
       .finally(() => setLoading(false))
   }, [offerId])
 
@@ -43,7 +41,7 @@ export default function Settlement() {
   }
 
   if (loading) return <div className="container"><p className="loading-text">Loading…</p></div>
-  if (!offer) return <div className="container"><p>Offer not found.</p></div>
+  if (!offer) return <div className="container"><p role="alert">{error || 'Offer not found.'}</p></div>
 
   const completed = milestones.filter(m => m.completed).length
   const total = milestones.length

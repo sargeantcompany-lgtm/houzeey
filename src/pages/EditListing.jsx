@@ -98,9 +98,9 @@ export default function EditListing() {
                 <label>
                   Listing status
                   <select name="status" value={form.status} onChange={handleChange}>
+                    {['pending_review', 'needs_changes'].includes(form.status) && <option value={form.status}>{form.status === 'pending_review' ? 'Awaiting solicitor review' : 'Changes requested'}</option>}
                     <option value="active">Active</option>
                     <option value="under_offer">Under Offer</option>
-                    <option value="leased">Leased</option>
                     <option value="sold">Sold</option>
                     <option value="withdrawn">Withdrawn</option>
                   </select>
@@ -109,7 +109,6 @@ export default function EditListing() {
                   Listing type
                   <select name="type" value={form.type} onChange={handleChange}>
                     <option value="sale">For Sale</option>
-                    <option value="rent">For Rent</option>
                   </select>
                 </label>
                 <label>

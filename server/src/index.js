@@ -21,6 +21,9 @@ import adminRoutes from './routes/admin.js'
 import marketingRoutes from './routes/marketing.js'
 import notificationRoutes from './routes/notifications.js'
 import supportRoutes from './routes/support.js'
+import solicitorReviewRoutes from './routes/solicitorReviews.js'
+import videoRoutes from './routes/videos.js'
+import { runMigrations } from './migrations.js'
 
 dotenv.config()
 
@@ -86,6 +89,27 @@ async function initDb() {
     );`)
   await pool.query(`ALTER TABLE listing_images ADD COLUMN IF NOT EXISTS data TEXT;`)
   await pool.query(`ALTER TABLE listing_images ADD COLUMN IF NOT EXISTS mimetype VARCHAR(50);`)
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS solicitor_reviews (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      listing_id UUID NOT NULL REFERENCES listings(id) ON DELETE CASCADE,
+      solicitor_name VARCHAR(255) NOT NULL,
+      solicitor_firm VARCHAR(255) NOT NULL,
+      solicitor_email VARCHAR(255) NOT NULL,
+      solicitor_phone VARCHAR(50),
+      registration_number VARCHAR(100) NOT NULL,
+      registration_state VARCHAR(3) NOT NULL,
+      token_hash VARCHAR(64) UNIQUE NOT NULL,
+      status VARCHAR(30) NOT NULL DEFAULT 'pending',
+      reviewer_name VARCHAR(255),
+      reviewer_registration_number VARCHAR(100),
+      notes TEXT,
+      expires_at TIMESTAMPTZ NOT NULL,
+      reviewed_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );`)
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_solicitor_reviews_listing ON solicitor_reviews(listing_id, created_at DESC);`)
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS conversations (
@@ -368,6 +392,7 @@ async function initDb() {
       created_at TIMESTAMPTZ DEFAULT NOW()
     );`)
 
+  await runMigrations()
   console.log('Database tables ready')
 }
 
@@ -424,6 +449,8 @@ app.use('/api/admin', adminRoutes)
 app.use('/api/marketing', marketingRoutes)
 app.use('/api/notifications', notificationRoutes)
 app.use('/api/support', supportRoutes)
+app.use('/api/solicitor-reviews', solicitorReviewRoutes)
+app.use('/api/videos', videoRoutes)
 
 // Serve images from DB
 app.get('/api/images/:id', async (req, res) => {

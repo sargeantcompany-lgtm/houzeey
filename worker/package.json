@@ -1,0 +1,19 @@
+{
+  "name": "houzeey-video-worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.883.0",
+    "bullmq": "^5.58.5",
+    "dotenv": "^16.4.5",
+    "ioredis": "^5.7.0",
+    "pg": "^8.12.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

@@ -5,7 +5,7 @@ import crypto from 'crypto'
 import { body, validationResult } from 'express-validator'
 import pool from '../db.js'
 import { requireAuth } from '../middleware/auth.js'
-import { sendEmail } from '../email.js'
+import { isEmailConfigured, sendEmail } from '../email.js'
 
 const router = Router()
 
@@ -22,7 +22,7 @@ router.post('/register', [
   body('name').trim().notEmpty().withMessage('Name is required'),
   body('email').isEmail().normalizeEmail().withMessage('Valid email required'),
   body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
-  body('role').isIn(['buyer', 'renter', 'seller', 'landlord', 'buyer_agent']).withMessage('Invalid role'),
+  body('role').isIn(['buyer', 'seller']).withMessage('Invalid role'),
 ], async (req, res) => {
   const errors = validationResult(req)
   if (!errors.isEmpty()) {
@@ -38,9 +38,11 @@ router.post('/register', [
     }
 
     const password_hash = await bcrypt.hash(password, 12)
+    const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase()
+    const is_admin = Boolean(adminEmail && email.toLowerCase() === adminEmail)
     const result = await pool.query(
-      'INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING id, name, email, role, verified, is_admin, avatar_url, created_at',
-      [name, email, password_hash, role]
+      'INSERT INTO users (name, email, password_hash, role, is_admin) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, email, role, verified, is_admin, avatar_url, created_at',
+      [name, email, password_hash, role, is_admin]
     )
 
     const user = result.rows[0]
@@ -148,6 +150,9 @@ router.post('/change-password', requireAuth, async (req, res) => {
 router.post('/forgot-password', async (req, res) => {
   const { email } = req.body
   if (!email) return res.status(400).json({ error: 'Email is required' })
+  if (!isEmailConfigured()) {
+    return res.status(503).json({ error: 'Password reset email is not configured.' })
+  }
 
   try {
     const result = await pool.query('SELECT id, name, email FROM users WHERE email = $1', [email.toLowerCase().trim()])

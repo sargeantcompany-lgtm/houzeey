@@ -34,7 +34,7 @@
   }
 
   .bottom-nav-item.active {
-    color: var(--green);
+    color: #1b6570;
   }
 
   .bottom-nav-item.active::after {
@@ -45,7 +45,7 @@
     transform: translateX(-50%);
     width: 28px;
     height: 2px;
-    background: var(--green);
+    background: #1b6570;
     border-radius: 0 0 2px 2px;
   }
 

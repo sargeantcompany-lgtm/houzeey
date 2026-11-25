@@ -6,17 +6,17 @@
 
 :root {
   --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --green: #3bb54a;
-  --green-dark: #2fa040;
-  --green-deep: #1a5c28;
-  --green-light: #f2fbf4;
-  --green-border: #b2deba;
-  --text-primary: #111827;
-  --text-secondary: #6b7280;
-  --text-muted: #9ca3af;
-  --bg: #f8faf8;
+  --green: #1b6570;
+  --green-dark: #124a55;
+  --green-deep: #173b49;
+  --green-light: #eaf3f1;
+  --green-border: #c5ddda;
+  --text-primary: #172f42;
+  --text-secondary: #647585;
+  --text-muted: #87959b;
+  --bg: #f7f9f9;
   --surface: #ffffff;
-  --border: #e5e7eb;
+  --border: #e2e8eb;
   --radius-sm: 8px;
   --radius: 12px;
   --radius-lg: 16px;

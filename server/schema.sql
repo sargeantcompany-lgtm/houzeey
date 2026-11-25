@@ -49,6 +49,26 @@ CREATE TABLE IF NOT EXISTS listing_images (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- A listing stays unpublished until the nominated legal representative attests to its details.
+CREATE TABLE IF NOT EXISTS solicitor_reviews (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  listing_id UUID NOT NULL REFERENCES listings(id) ON DELETE CASCADE,
+  solicitor_name VARCHAR(255) NOT NULL,
+  solicitor_firm VARCHAR(255) NOT NULL,
+  solicitor_email VARCHAR(255) NOT NULL,
+  solicitor_phone VARCHAR(50),
+  registration_number VARCHAR(100) NOT NULL,
+  registration_state VARCHAR(3) NOT NULL,
+  token_hash VARCHAR(64) UNIQUE NOT NULL,
+  status VARCHAR(30) NOT NULL DEFAULT 'pending',
+  reviewer_name VARCHAR(255),
+  reviewer_registration_number VARCHAR(100),
+  notes TEXT,
+  expires_at TIMESTAMPTZ NOT NULL,
+  reviewed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Conversations
 CREATE TABLE IF NOT EXISTS conversations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -119,3 +139,22 @@ CREATE INDEX IF NOT EXISTS idx_listing_images_listing_id ON listing_images(listi
 CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id);
 CREATE INDEX IF NOT EXISTS idx_payments_user_id ON payments(user_id);
 CREATE INDEX IF NOT EXISTS idx_saved_listings_user_id ON saved_listings(user_id);
+
+-- Video files stay in private object storage; only keys and processing status are stored here.
+CREATE TABLE IF NOT EXISTS videos (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  listing_id UUID NOT NULL UNIQUE REFERENCES listings(id) ON DELETE CASCADE,
+  original_key TEXT NOT NULL,
+  original_size_bytes BIGINT NOT NULL,
+  original_content_type VARCHAR(100) NOT NULL,
+  mp4_key TEXT,
+  thumb_key TEXT,
+  status VARCHAR(20) NOT NULL DEFAULT 'uploading'
+    CHECK (status IN ('uploading', 'processing', 'ready', 'failed')),
+  error TEXT,
+  duration_seconds INTEGER,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_videos_status ON videos(status);
