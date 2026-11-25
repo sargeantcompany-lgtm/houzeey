@@ -282,14 +282,18 @@ router.post('/:id/accept', requireAuth, async (req, res) => {
       { title: 'Settlement', description: 'Final settlement — keys handed over', days: 42, order: 6 },
     ]
 
-    const baseDate = offer.settlement_date ? new Date(offer.settlement_date) : new Date()
+    // Steps are counted from today (acceptance). Settlement uses the agreed
+    // settlement date when one was set. Previously every step was counted from
+    // the settlement date, so deposit/finance appeared due after settlement.
+    const acceptedOn = new Date()
     for (const m of milestones) {
-      const dueDate = new Date(baseDate)
-      dueDate.setDate(dueDate.getDate() + (m.order === 6 ? 0 : m.days))
+      let dueDate = new Date(acceptedOn)
+      dueDate.setDate(dueDate.getDate() + m.days)
+      if (m.order === 6 && offer.settlement_date) dueDate = new Date(offer.settlement_date)
       await client.query(`
         INSERT INTO settlement_milestones (offer_id, title, description, due_date, sort_order)
         VALUES ($1, $2, $3, $4, $5)
-      `, [offer.id, m.title, m.description, dueDate.toISOString().split('T')[0], m.order])
+      `, [offer.id, m.title, m.description, `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, '0')}-${String(dueDate.getDate()).padStart(2, '0')}`, m.order])
     }
 
     await client.query('COMMIT')
