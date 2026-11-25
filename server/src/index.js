@@ -24,6 +24,7 @@ import supportRoutes from './routes/support.js'
 import solicitorReviewRoutes from './routes/solicitorReviews.js'
 import videoRoutes from './routes/videos.js'
 import { runMigrations } from './migrations.js'
+import { createDownloadUrl } from './services/videoStorage.js'
 
 dotenv.config()
 
@@ -455,9 +456,16 @@ app.use('/api/videos', videoRoutes)
 // Serve images from DB
 app.get('/api/images/:id', async (req, res) => {
   try {
-    const result = await pool.query('SELECT data, mimetype FROM listing_images WHERE id = $1', [req.params.id])
-    if (result.rows.length === 0 || !result.rows[0].data) return res.status(404).end()
-    const { data, mimetype } = result.rows[0]
+    const result = await pool.query('SELECT data, mimetype, storage_key FROM listing_images WHERE id = $1', [req.params.id])
+    if (result.rows.length === 0) return res.status(404).end()
+    const { data, mimetype, storage_key: storageKey } = result.rows[0]
+    if (storageKey) {
+      // Bucket-stored image: redirect to a short-lived signed URL so bytes never pass through the API.
+      const signedUrl = await createDownloadUrl(storageKey, mimetype, 60 * 60)
+      res.setHeader('Cache-Control', 'private, max-age=3000')
+      return res.redirect(302, signedUrl)
+    }
+    if (!data) return res.status(404).end()
     res.setHeader('Content-Type', mimetype || 'image/jpeg')
     res.setHeader('Cache-Control', 'public, max-age=31536000')
     res.send(Buffer.from(data, 'base64'))

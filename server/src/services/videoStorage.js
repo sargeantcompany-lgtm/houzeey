@@ -89,3 +89,31 @@ export async function createPlaybackUrls(mp4Key, thumbKey, expiresIn = 6 * 60 * 
 
   return { videoUrl, thumbnailUrl, expiresIn }
 }
+
+export function isBucketConfigured() {
+  try {
+    getBucketSettings()
+    return true
+  } catch {
+    return false
+  }
+}
+
+export async function uploadObject(key, body, contentType) {
+  const settings = getBucketSettings()
+  await getClient().send(new PutObjectCommand({
+    Bucket: settings.bucket,
+    Key: key,
+    Body: body,
+    ContentType: contentType,
+  }))
+}
+
+export async function createDownloadUrl(key, contentType, expiresIn = 60 * 60) {
+  const settings = getBucketSettings()
+  return getSignedUrl(getClient(), new GetObjectCommand({
+    Bucket: settings.bucket,
+    Key: key,
+    ResponseContentType: contentType || undefined,
+  }), { expiresIn })
+}

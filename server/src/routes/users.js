@@ -2,6 +2,7 @@ import { Router } from 'express'
 import pool from '../db.js'
 import { requireAuth } from '../middleware/auth.js'
 import { upload } from '../middleware/upload.js'
+import { saveImage, imageUrl } from '../services/imageStorage.js'
 
 const router = Router()
 
@@ -58,12 +59,8 @@ router.put('/me', requireAuth, upload.single('avatar'), async (req, res) => {
   try {
     let avatarUrl = undefined
     if (req.file) {
-      const base64 = req.file.buffer.toString('base64')
-      const imgResult = await pool.query(
-        'INSERT INTO listing_images (listing_id, data, mimetype, display_order) VALUES (NULL, $1, $2, 0) RETURNING id',
-        [base64, req.file.mimetype]
-      )
-      avatarUrl = `${req.protocol}://${req.get('host')}/api/images/${imgResult.rows[0].id}`
+      const imageId = await saveImage(pool, { buffer: req.file.buffer, mimetype: req.file.mimetype })
+      avatarUrl = imageUrl(req, imageId)
     }
 
     const result = await pool.query(`

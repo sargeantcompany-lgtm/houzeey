@@ -2,16 +2,13 @@ import { Router } from 'express'
 import pool from '../db.js'
 import { requireAuth } from '../middleware/auth.js'
 import { upload } from '../middleware/upload.js'
+import { saveImage, imageUrl } from '../services/imageStorage.js'
 
 const router = Router()
 
 async function storeFile(req, file) {
-  const base64 = file.buffer.toString('base64')
-  const result = await pool.query(
-    'INSERT INTO listing_images (listing_id, data, mimetype, display_order) VALUES (NULL, $1, $2, 0) RETURNING id',
-    [base64, file.mimetype]
-  )
-  return `${req.protocol}://${req.get('host')}/api/images/${result.rows[0].id}`
+  const id = await saveImage(pool, { buffer: file.buffer, mimetype: file.mimetype })
+  return imageUrl(req, id)
 }
 
 // GET /api/identity/me — get my verification status
