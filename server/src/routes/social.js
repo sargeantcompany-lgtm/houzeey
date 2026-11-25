@@ -40,7 +40,7 @@ router.get('/feed', optionalAuth, async (req, res) => {
 
   try {
     const result = await pool.query(`
-      SELECT l.id, l.title, l.description, l.address, l.suburb, l.state, l.postcode,
+      SELECT l.id, l.user_id, l.title, l.description, l.address, l.suburb, l.state, l.postcode,
         l.property_type, l.price, l.price_max, l.price_display, l.beds, l.baths, l.cars,
         l.land_size, l.status, l.features, l.created_at,
         u.name AS seller_name,

@@ -70,7 +70,7 @@ export default function EditListing() {
       }
       await api.listings.update(id, payload)
       setSuccess(true)
-      setTimeout(() => navigate('/dashboard'), 1200)
+      setTimeout(() => navigate('/my-listings'), 1200)
     } catch (err) {
       setError(err.message || 'Failed to save changes')
       setSaving(false)
@@ -85,7 +85,7 @@ export default function EditListing() {
       <div className="container">
         <div className="edit-listing-card">
           <div className="edit-listing-header">
-            <Link to="/dashboard" className="edit-back">← Back to dashboard</Link>
+            <Link to="/my-listings" className="edit-back">← Back to my listings</Link>
             <h1>Edit listing</h1>
           </div>
 
@@ -192,10 +192,10 @@ export default function EditListing() {
             </div>
 
             {error && <p className="edit-error">{error}</p>}
-            {success && <p className="edit-success">Saved! Returning to dashboard…</p>}
+            {success && <p className="edit-success">Saved! Returning to my listings…</p>}
 
             <div className="edit-actions">
-              <Link to="/dashboard" className="btn-back-link">Cancel</Link>
+              <Link to="/my-listings" className="btn-back-link">Cancel</Link>
               <button type="submit" className="btn-save" disabled={saving}>
                 {saving ? 'Saving…' : 'Save changes'}
               </button>

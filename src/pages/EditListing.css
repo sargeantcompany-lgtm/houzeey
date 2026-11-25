@@ -64,7 +64,7 @@
   min-width: 130px;
 }
 
-label {
+.edit-listing-page label {
   display: flex;
   flex-direction: column;
   gap: 5px;
@@ -73,7 +73,7 @@ label {
   color: var(--text-secondary);
 }
 
-label.full {
+.edit-listing-page label.full {
   display: flex;
   flex-direction: column;
   gap: 5px;
@@ -81,9 +81,9 @@ label.full {
   margin-bottom: 12px;
 }
 
-label input,
-label select,
-label textarea {
+.edit-listing-page label input,
+.edit-listing-page label select,
+.edit-listing-page label textarea {
   padding: 9px 12px;
   border: 1.5px solid var(--border);
   border-radius: var(--radius-sm);
@@ -93,14 +93,14 @@ label textarea {
   transition: border-color var(--transition);
 }
 
-label input:focus,
-label select:focus,
-label textarea:focus {
+.edit-listing-page label input:focus,
+.edit-listing-page label select:focus,
+.edit-listing-page label textarea:focus {
   outline: none;
   border-color: var(--green);
 }
 
-label textarea {
+.edit-listing-page label textarea {
   resize: vertical;
   font-family: inherit;
 }

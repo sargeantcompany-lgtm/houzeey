@@ -41,7 +41,7 @@ router.get('/received', requireAuth, async (req, res) => {
              l.price AS listing_price, l.price_display AS listing_price_display, l.status AS listing_status,
              (SELECT url FROM listing_images WHERE listing_id = l.id AND NOT is_private ORDER BY display_order LIMIT 1) AS listing_image,
              COALESCE((SELECT json_agg(h ORDER BY h.created_at) FROM (
-               SELECT oh.made_by_role, oh.action, oh.offer_price, oh.settlement_date, oh.conditions, oh.created_at
+               SELECT oh.made_by_role, oh.action, oh.offer_price, oh.settlement_date, oh.conditions, oh.note, oh.created_at
                FROM offer_history oh WHERE oh.offer_id = o.id
              ) h), '[]') AS history
       FROM offers o
@@ -67,7 +67,7 @@ router.get('/mine', requireAuth, async (req, res) => {
              l.price AS listing_price, l.price_display AS listing_price_display, l.status AS listing_status,
              (SELECT url FROM listing_images WHERE listing_id = l.id AND NOT is_private ORDER BY display_order LIMIT 1) AS listing_image,
              COALESCE((SELECT json_agg(h ORDER BY h.created_at) FROM (
-               SELECT oh.made_by_role, oh.action, oh.offer_price, oh.settlement_date, oh.conditions, oh.created_at
+               SELECT oh.made_by_role, oh.action, oh.offer_price, oh.settlement_date, oh.conditions, oh.note, oh.created_at
                FROM offer_history oh WHERE oh.offer_id = o.id
              ) h), '[]') AS history
       FROM offers o

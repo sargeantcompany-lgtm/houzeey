@@ -5,6 +5,7 @@ import pool from '../db.js'
 import { requireAuth, optionalAuth } from '../middleware/auth.js'
 import { upload } from '../middleware/upload.js'
 import { saveImage } from '../services/imageStorage.js'
+import { createPlaybackUrls, isBucketConfigured } from '../services/videoStorage.js'
 import { sendEmail } from '../email.js'
 
 const router = Router()
@@ -198,6 +199,21 @@ router.get('/:id', optionalAuth, async (req, res) => {
       [req.params.id]
     )
     listing.images = images.rows
+
+    // Ready video tour (signed playback URL), if the bucket is configured.
+    listing.video = null
+    const video = await pool.query(
+      "SELECT mp4_key, thumb_key FROM videos WHERE listing_id = $1 AND status = 'ready' ORDER BY created_at DESC LIMIT 1",
+      [req.params.id]
+    )
+    if (video.rowCount && isBucketConfigured()) {
+      try {
+        const urls = await createPlaybackUrls(video.rows[0].mp4_key, video.rows[0].thumb_key)
+        listing.video = { url: urls.videoUrl, thumbnailUrl: urls.thumbnailUrl }
+      } catch (error) {
+        console.error('Could not sign listing video:', error.message)
+      }
+    }
 
     // Increment views
     await pool.query('UPDATE listings SET views = views + 1 WHERE id = $1', [req.params.id])

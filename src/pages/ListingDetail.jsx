@@ -1,313 +1,338 @@
-import { useState, useEffect } from 'react'
-import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
-import { isLoggedIn, getSession } from '../auth'
-import './ListingDetail.css'
+import { getSession, isLoggedIn } from '../auth'
+import { Avatar, FeatureLine, HouseArt, Icon, fullAddress, hueFor, money, priceText, shareListing, statusLabel, toast, toggleSave, useSaved } from '../craft/ui'
 
-const PLACEHOLDER = 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=900&q=80'
+function addDays(days) {
+  const d = new Date()
+  d.setDate(d.getDate() + days)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 
-export default function ListingDetail() {
-  const { id } = useParams()
-  const [searchParams] = useSearchParams()
+function OfferModal({ listing, onClose }) {
   const navigate = useNavigate()
-  const [listing, setListing] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const suggested = Number(listing.price) > 0 ? Math.round(Number(listing.price) / 1000) * 1000 : ''
+  const [form, setForm] = useState({ amount: suggested, deposit: '10', days: '42', finance: true, bp: true, saleOfHome: false, message: '' })
   const [error, setError] = useState('')
-  const [activeImg, setActiveImg] = useState(0)
-  const [showContact, setShowContact] = useState(() => searchParams.get('contact') === '1')
-  const [message, setMessage] = useState('')
   const [sending, setSending] = useState(false)
-  const [sent, setSent] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [reviews, setReviews] = useState({ reviews: [], avg_rating: 0, count: 0 })
-  const [tab, setTab] = useState('about')
-
-  // Mortgage calculator state
-  const [calc, setCalc] = useState({ deposit: '', rate: '6.5', years: '30' })
-  const [calcResult, setCalcResult] = useState(null)
+  const set = key => e => setForm(f => ({ ...f, [key]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }))
 
   useEffect(() => {
-    api.listings.get(id)
-      .then(data => {
-        setListing(data)
-        // Load reviews for the seller
-        return api.reviews.get(data.user_id)
-      })
-      .then(rev => setReviews(rev))
-      .catch(requestError => setError(requestError.message || 'Could not load this property.'))
-      .finally(() => setLoading(false))
-  }, [id])
+    const key = e => e.key === 'Escape' && onClose()
+    document.addEventListener('keydown', key)
+    document.body.classList.add('no-scroll')
+    return () => { document.removeEventListener('keydown', key); document.body.classList.remove('no-scroll') }
+  }, [onClose])
 
-  // Pre-fill deposit on listing load (10% default)
-  useEffect(() => {
-    if (listing?.price && listing.type === 'sale') {
-      setCalc(c => ({ ...c, deposit: Math.round(listing.price * 0.1).toString() }))
-    }
-  }, [listing])
-
-  const imgs = listing?.images?.length > 0
-    ? listing.images.map(img => img.url)
-    : [PLACEHOLDER]
-
-  async function handleContact(e) {
+  async function submit(e) {
     e.preventDefault()
-    if (!isLoggedIn()) { navigate('/login', { state: { from: { pathname: `/listing/${id}?contact=1` } } }); return }
-    const session = getSession()
-    if (session.id === listing.user_id) return
-
-    setSending(true)
+    const amount = Number(form.amount)
+    if (!Number.isFinite(amount) || amount < 1000) { setError('Enter your offer in dollars, for example 850000.'); return }
+    setSending(true); setError('')
     try {
-      await api.conversations.start({ recipient_id: listing.user_id, listing_id: listing.id, message })
-      setSent(true)
-      setMessage('')
+      const offer = await api.offers.submit({
+        listing_id: listing.id,
+        offer_price: amount,
+        deposit_amount: Math.round(amount * Number(form.deposit) / 100),
+        settlement_date: addDays(Number(form.days)),
+        finance_clause: form.finance,
+        finance_days: form.finance ? 14 : null,
+        building_inspection: form.bp,
+        building_days: form.bp ? 14 : null,
+        conditions: form.saleOfHome ? 'Subject to sale of the buyer\'s home' : null,
+      })
+      if (form.message.trim()) {
+        await api.conversations.start({ recipient_id: listing.user_id, listing_id: listing.id, message: form.message.trim() }).catch(() => {})
+      }
+      toast('Offer sent to the owner')
+      navigate(`/offers?tab=buying&id=${offer.id}`)
     } catch (err) {
-      alert(err.message || 'Failed to send message')
-    } finally {
+      setError(err.message || 'Could not send your offer.')
       setSending(false)
     }
   }
 
-  async function toggleSave() {
-    if (!isLoggedIn()) { navigate('/login'); return }
-    setSaving(true)
-    try {
-      if (saved) {
-        await api.saved.unsave(listing.id)
-        setSaved(false)
-      } else {
-        await api.saved.save(listing.id)
-        setSaved(true)
-      }
-    } catch { /* ignore */ } finally {
-      setSaving(false)
-    }
-  }
+  return (
+    <div className="modal" role="dialog" aria-modal="true" aria-labelledby="offerTitle" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal-card modal-wide">
+        <button className="icon-btn modal-close" onClick={onClose} aria-label="Close"><Icon.close /></button>
+        <h2 id="offerTitle">Make an offer</h2>
+        <p className="muted">{fullAddress(listing)} · {priceText(listing)}</p>
+        <form onSubmit={submit} noValidate>
+          <div className="field-grid">
+            <label className="field span-2"><span>Your offer ($)</span><input type="number" min="1000" step="1" inputMode="numeric" value={form.amount} onChange={set('amount')} required autoFocus /></label>
+            <label className="field"><span>Deposit</span>
+              <select value={form.deposit} onChange={set('deposit')}><option value="5">5%</option><option value="10">10%</option></select>
+            </label>
+            <label className="field"><span>Settlement</span>
+              <select value={form.days} onChange={set('days')}>{[30, 42, 60, 90].map(d => <option key={d} value={d}>{d} days</option>)}</select>
+            </label>
+          </div>
+          <fieldset className="checks">
+            <legend>Conditions (leave all unticked for an unconditional offer)</legend>
+            <label><input type="checkbox" checked={form.finance} onChange={set('finance')} /> Subject to finance</label>
+            <label><input type="checkbox" checked={form.bp} onChange={set('bp')} /> Subject to building and pest inspection</label>
+            <label><input type="checkbox" checked={form.saleOfHome} onChange={set('saleOfHome')} /> Subject to sale of my home</label>
+          </fieldset>
+          <label className="field"><span>Message to the owner (optional)</span><textarea rows={3} value={form.message} onChange={set('message')} placeholder="e.g. We're pre-approved and can be flexible on settlement." /></label>
+          {error && <p className="form-error" role="alert">{error}</p>}
+          <button className="btn btn-primary btn-block" type="submit" disabled={sending}>{sending ? 'Sending…' : 'Send offer'}</button>
+          <p className="muted small-print">An offer here isn&apos;t legally binding. A sale is only agreed once both sides sign a contract of sale prepared by a conveyancer or solicitor.</p>
+        </form>
+      </div>
+    </div>
+  )
+}
 
-  function calcMortgage() {
-    const price = Number(listing?.price) || 0
-    const deposit = Number(calc.deposit) || 0
-    const principal = price - deposit
-    const r = Number(calc.rate) / 100 / 12
-    const n = Number(calc.years) * 12
+function Repayments({ price }) {
+  const [deposit, setDeposit] = useState(Math.round((Number(price) || 0) * 0.2))
+  const [rate, setRate] = useState(6.09)
+  const [term, setTerm] = useState(30)
+  const loan = Math.max(0, (Number(price) || 0) - (Number(deposit) || 0))
+  const r = (Number(rate) || 0) / 100 / 12, n = term * 12
+  const monthly = r > 0 ? (loan * r) / (1 - Math.pow(1 + r, -n)) : loan / n
+  return (
+    <div className="repay">
+      <label className="field"><span>Deposit</span><input type="number" min="0" step="1000" value={deposit} onChange={e => setDeposit(e.target.value)} /></label>
+      <label className="field"><span>Interest rate (%)</span><input type="number" min="0" max="20" step="0.05" value={rate} onChange={e => setRate(e.target.value)} /></label>
+      <label className="field"><span>Loan term (years)</span>
+        <select value={term} onChange={e => setTerm(Number(e.target.value))}>{[15, 20, 25, 30].map(t => <option key={t}>{t}</option>)}</select>
+      </label>
+      <div className="repay-out">
+        <span>Estimated monthly repayment</span>
+        <strong>{money(monthly || 0)}</strong>
+        <small className="muted">Principal and interest. A guide only, not a loan offer.</small>
+      </div>
+    </div>
+  )
+}
 
-    if (principal <= 0 || r <= 0 || n <= 0) return
-
-    const monthly = principal * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1)
-    const total = monthly * n
-    const totalInterest = total - principal
-
-    setCalcResult({
-      monthly: monthly.toFixed(0),
-      total: total.toFixed(0),
-      totalInterest: totalInterest.toFixed(0),
-      principal,
-      lvr: ((principal / price) * 100).toFixed(0),
-    })
-  }
-
-  const formatPrice = (p, type, display, max) => {
-    if (display === 'contact' || p == null || Number(p) === 0) return 'Price on request'
-    if (display === 'range' && max) return `$${Number(p).toLocaleString()} – $${Number(max).toLocaleString()}`
-    return type === 'rent' ? `$${Number(p).toLocaleString()}/wk` : `$${Number(p).toLocaleString()}`
-  }
-
-  if (loading) return <div className="detail-page"><div className="container"><p>Loading…</p></div></div>
-  if (error || !listing) return <div className="detail-page"><div className="container"><p>{error || 'Not found'}</p></div></div>
-
+export default function ListingDetail() {
+  const { id } = useParams()
+  const navigate = useNavigate()
+  const [params, setParams] = useSearchParams()
+  const saved = useSaved()
   const session = getSession()
+  const [listing, setListing] = useState(null)
+  const [missing, setMissing] = useState(false)
+  const [slide, setSlide] = useState(0)
+  const [slots, setSlots] = useState([])
+  const [comments, setComments] = useState([])
+  const [draft, setDraft] = useState('')
+  const [message, setMessage] = useState('')
+  const [topics, setTopics] = useState([])
+  const [sent, setSent] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [msgError, setMsgError] = useState('')
+
+  useEffect(() => {
+    let live = true
+    setListing(null); setMissing(false); setSlide(0)
+    api.listings.get(id).then(l => live && setListing(l)).catch(() => live && setMissing(true))
+    api.inspections.slots(id).then(s => live && setSlots(s)).catch(() => {})
+    api.social.comments(id).then(c => live && setComments(c)).catch(() => {})
+    return () => { live = false }
+  }, [id])
+
+  const slides = useMemo(() => {
+    if (!listing) return []
+    const imgs = (listing.images || []).map(i => i.url).filter(Boolean)
+    return [
+      ...(listing.video ? [{ video: listing.video }] : []),
+      ...(imgs.length ? imgs.map(src => ({ img: src })) : [0, 40, 80].map(d => ({ art: d }))),
+    ]
+  }, [listing])
+
+  if (missing) {
+    return (
+      <div className="container empty">
+        <h1>We couldn&apos;t find that property</h1>
+        <p>It may have been removed by its owner, or it isn&apos;t live yet.</p>
+        <Link className="btn btn-primary" to="/buy">Browse properties</Link>
+      </div>
+    )
+  }
+  if (!listing) return <div className="container property"><p className="muted">Loading…</p></div>
+
   const isOwner = session?.id === listing.user_id
-  const sellerInitial = (listing.seller_name || '?')[0].toUpperCase()
-  const sellerSince = listing.seller_since
-    ? new Date(listing.seller_since).toLocaleDateString('en-AU', { month: 'short', year: 'numeric' })
-    : 'Unknown'
+  const canOffer = listing.status === 'active' && !isOwner
+  const offerOpen = params.get('offer') === '1' && canOffer
+  const closeOffer = () => { const p = new URLSearchParams(params); p.delete('offer'); setParams(p, { replace: true }) }
+  const openOffer = () => {
+    if (!isLoggedIn()) { toast('Join or sign in to make an offer'); navigate('/login'); return }
+    const p = new URLSearchParams(params); p.set('offer', '1'); setParams(p)
+  }
+  const isSaved = saved.has(listing.id)
+  const cur = slides[slide] || slides[0]
+
+  async function sendMessage(e) {
+    e.preventDefault()
+    const body = [topics.length ? `I'd like to: ${topics.join(', ')}.` : '', message.trim()].filter(Boolean).join('\n\n')
+    if (!body) { setMsgError('Write a message to the owner.'); return }
+    setSending(true); setMsgError('')
+    try {
+      await api.conversations.start({ recipient_id: listing.user_id, listing_id: listing.id, message: body })
+      setSent(true)
+    } catch (err) { setMsgError(err.message || 'Could not send your message.') } finally { setSending(false) }
+  }
+
+  async function postComment(e) {
+    e.preventDefault()
+    const text = draft.trim()
+    if (!text) return
+    if (!isLoggedIn()) { toast('Join or sign in to comment'); navigate('/login'); return }
+    try { const c = await api.social.comment(listing.id, text); setComments(list => [...list, c]); setDraft('') } catch (err) { toast(err.message) }
+  }
+
+  const toggleTopic = t => setTopics(list => (list.includes(t) ? list.filter(x => x !== t) : [...list, t]))
 
   return (
-    <div className="detail-page">
-      <div className="container">
-        <nav className="breadcrumb">
-          <Link to="/">Home</Link> › <Link to={listing.type === 'sale' ? '/buy' : '/rent'}>{listing.type === 'sale' ? 'Buy' : 'Rent'}</Link> › <span>{listing.title}</span>
-        </nav>
+    <div className="container property">
+      <nav className="crumbs" aria-label="Breadcrumb">
+        <Link to="/">Home</Link><span aria-hidden="true">›</span>
+        <Link to="/buy">Buy</Link><span aria-hidden="true">›</span>
+        <Link to={`/buy?q=${encodeURIComponent(listing.suburb)}`}>{listing.suburb}</Link><span aria-hidden="true">›</span>
+        <span>{listing.address}</span>
+      </nav>
 
-        <div className="detail-grid">
-          {/* Left: images + info */}
-          <div className="detail-main">
-            <div className="gallery">
-              <div className="gallery-main">
-                <img src={imgs[activeImg]} alt={listing.title} />
-                <button className="gallery-save-btn" onClick={toggleSave} disabled={saving} title={saved ? 'Unsave' : 'Save'} aria-label={saved ? 'Remove from saved homes' : 'Save this home'} aria-pressed={saved}>
-                  {saved ? '♥' : '♡'}
-                </button>
-              </div>
-              {imgs.length > 1 && (
-                <div className="gallery-thumbs">
-                  {imgs.map((img, i) => (
-                    <button key={i} className={`thumb ${activeImg === i ? 'active' : ''}`} onClick={() => setActiveImg(i)}>
-                      <img src={img} alt="" />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="detail-stats">
-              {listing.beds != null && <div className="stat"><span className="stat-val">{listing.beds}</span><span>Beds</span></div>}
-              {listing.baths != null && <div className="stat"><span className="stat-val">{listing.baths}</span><span>Baths</span></div>}
-              {listing.cars != null && <div className="stat"><span className="stat-val">{listing.cars}</span><span>Cars</span></div>}
-              {listing.land_size != null && <div className="stat"><span className="stat-val">{listing.land_size}m²</span><span>Land</span></div>}
-            </div>
-
-            {/* Tabs */}
-            <div className="detail-tabs">
-              {['about', ...(listing.type === 'sale' ? ['mortgage'] : []), 'reviews'].map(t => (
-                <button key={t} className={`detail-tab ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
-                  {{ about: 'About', mortgage: 'Mortgage Calculator', reviews: `Reviews (${reviews.count})` }[t]}
-                </button>
-              ))}
-            </div>
-
-            {tab === 'about' && listing.description && (
-              <div className="detail-section">
-                {listing.description.split('\n\n').map((p, i) => <p key={i}>{p}</p>)}
-              </div>
-            )}
-
-            {tab === 'mortgage' && listing.type === 'sale' && (
-              <div className="detail-section mortgage-section">
-                <h3>Repayment estimator</h3>
-                <p className="calc-disclaimer">This is an estimate only. Contact a mortgage broker for personalised advice.</p>
-                <div className="calc-fields">
-                  <label>
-                    Property price
-                    <input type="text" value={`$${Number(listing.price).toLocaleString()}`} readOnly />
-                  </label>
-                  <label>
-                    Deposit ($)
-                    <input type="number" value={calc.deposit} onChange={e => setCalc(c => ({ ...c, deposit: e.target.value }))} />
-                  </label>
-                  <label>
-                    Interest rate (%)
-                    <input type="number" step="0.1" value={calc.rate} onChange={e => setCalc(c => ({ ...c, rate: e.target.value }))} />
-                  </label>
-                  <label>
-                    Loan term (years)
-                    <select value={calc.years} onChange={e => setCalc(c => ({ ...c, years: e.target.value }))}>
-                      {[10, 15, 20, 25, 30].map(y => <option key={y} value={y}>{y} years</option>)}
-                    </select>
-                  </label>
-                </div>
-                <button className="calc-btn" onClick={calcMortgage}>Calculate repayments</button>
-
-                {calcResult && (
-                  <div className="calc-results">
-                    <div className="calc-main-result">
-                      <span className="calc-amount">${Number(calcResult.monthly).toLocaleString()}</span>
-                      <span>estimated monthly repayment</span>
-                    </div>
-                    <div className="calc-breakdown">
-                      <div className="calc-row"><span>Loan amount</span><strong>${Number(calcResult.principal).toLocaleString()}</strong></div>
-                      <div className="calc-row"><span>LVR</span><strong>{calcResult.lvr}%{calcResult.lvr > 80 ? ' (LMI may apply)' : ''}</strong></div>
-                      <div className="calc-row"><span>Total interest</span><strong>${Number(calcResult.totalInterest).toLocaleString()}</strong></div>
-                      <div className="calc-row"><span>Total repaid</span><strong>${Number(calcResult.total).toLocaleString()}</strong></div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {tab === 'reviews' && (
-              <div className="detail-section">
-                {reviews.count === 0 ? (
-                  <p className="detail-empty">No reviews for this seller yet.</p>
-                ) : (
-                  <>
-                    <div className="detail-reviews-summary">
-                      <span className="detail-avg">{reviews.avg_rating}</span>
-                      <div>
-                        <div className="review-stars-lg">{'★'.repeat(Math.round(reviews.avg_rating))}{'☆'.repeat(5 - Math.round(reviews.avg_rating))}</div>
-                        <span className="detail-review-count">{reviews.count} reviews for {listing.seller_name}</span>
-                      </div>
-                    </div>
-                    {reviews.reviews.slice(0, 5).map(r => (
-                      <div key={r.id} className="detail-review-item">
-                        <div className="detail-review-header">
-                          <span className="review-stars">{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</span>
-                          <span className="detail-review-date">{new Date(r.created_at).toLocaleDateString('en-AU', { month: 'short', year: 'numeric' })}</span>
-                        </div>
-                        {r.comment && <p className="detail-review-comment">{r.comment}</p>}
-                      </div>
-                    ))}
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Right: price + contact */}
-          <div className="detail-sidebar">
-            <div className="price-card">
-              <div className="price-tag">{formatPrice(listing.price, listing.type, listing.price_display, listing.price_max)}</div>
-              <h1>{listing.title}</h1>
-              <p className="detail-address">📍 {listing.address}, {listing.suburb} {listing.state} {listing.postcode}</p>
-
-              <div className="listing-action-btns">
-                {!isOwner && (
-                  <button className="btn-contact" onClick={() => setShowContact(o => !o)}>
-                    {showContact ? 'Hide contact' : 'Contact owner'}
-                  </button>
-                )}
-                {listing.type === 'sale' && isLoggedIn() && !isOwner && (
-                  <Link to={`/offers/${listing.id}`} className="btn-offer">Make an Offer</Link>
-                )}
-                {listing.type === 'rent' && isLoggedIn() && !isOwner && (
-                  <Link to={`/apply/${listing.id}`} className="btn-apply">Apply to Rent</Link>
-                )}
-                <Link to={`/inspections/${listing.id}`} className="btn-inspect">Book Inspection</Link>
-                {isOwner && (
-                  <Link to={`/listing/${listing.id}/edit`} className="btn-edit-listing">Edit Listing</Link>
-                )}
-              </div>
-
-              {showContact && !isOwner && (
-                sent ? (
-                  <p className="contact-sent">Message sent! Check your messages.</p>
-                ) : (
-                  <form className="contact-form" onSubmit={handleContact}>
-                    <textarea rows={4} placeholder="Hi, I'm interested in this property…" value={message} onChange={e => setMessage(e.target.value)} required />
-                    <button type="submit" disabled={sending}>{sending ? 'Sending…' : 'Send message'}</button>
-                  </form>
-                )
-              )}
-
-              <div className="seller-card">
-                <div className="seller-avatar">{sellerInitial}</div>
-                <div>
-                  <div className="seller-name">
-                    {listing.seller_name}
-                    {listing.seller_verified && <span className="verified-badge">✓ Identity checked</span>}
-                    {listing.solicitor_review_status === 'approved' && <span className="verified-badge">✓ Solicitor reviewed</span>}
-                  </div>
-                  <div className="seller-since">Member since {sellerSince}</div>
-                  {reviews.count > 0 && (
-                    <div className="seller-rating">
-                      <span className="stars-sm">{'★'.repeat(Math.round(reviews.avg_rating))}</span>
-                      <span>{reviews.avg_rating} ({reviews.count})</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="detail-listing-meta">
-                <div className="meta-row"><span>Type</span><span>{listing.type === 'sale' ? 'For Sale' : 'For Rent'}</span></div>
-                <div className="meta-row"><span>Property</span><span style={{ textTransform: 'capitalize' }}>{listing.property_type}</span></div>
-                <div className="meta-row"><span>Status</span><span style={{ textTransform: 'capitalize' }}>{listing.status?.replace('_', ' ')}</span></div>
-                <div className="meta-row"><span>Views</span><span>{listing.views ?? 0}</span></div>
-                <div className="meta-row"><span>Listed</span><span>{new Date(listing.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</span></div>
-              </div>
-            </div>
-          </div>
+      <div className="gallery">
+        <div className="gallery-main">
+          {cur?.video && <div className="gallery-video"><video src={cur.video.url} poster={cur.video.thumbnailUrl} controls playsInline /></div>}
+          {cur?.img && <img src={cur.img} alt={`Photo ${slide + 1} of ${fullAddress(listing)}`} />}
+          {cur?.art != null && <HouseArt hue={(hueFor(listing.id) + cur.art) % 360} type={listing.property_type} />}
         </div>
+        {slides.length > 1 && <>
+          <button className="gallery-btn prev" onClick={() => setSlide(s => (s - 1 + slides.length) % slides.length)} aria-label="Previous photo"><Icon.prev /></button>
+          <button className="gallery-btn next" onClick={() => setSlide(s => (s + 1) % slides.length)} aria-label="Next photo"><Icon.next /></button>
+        </>}
+        <span className="gallery-count">{slide + 1} / {slides.length}</span>
       </div>
+
+      <div className="property-layout">
+        <article className="property-main">
+          <div className="property-headline">
+            <div>
+              <span className={`pill ${listing.status === 'under_offer' ? 'is-offer' : listing.status === 'sold' ? 'is-sold' : ''}`}>{statusLabel(listing)}</span>
+              <h1>{fullAddress(listing)}</h1>
+              <p className="property-price">{priceText(listing)}</p>
+            </div>
+            <div className="property-actions">
+              <button className={`btn btn-outline ${isSaved ? 'is-saved' : ''}`} id="pSave" aria-pressed={isSaved} onClick={() => toggleSave(listing.id, navigate)}>
+                <Icon.heart size={18} /><span>{isSaved ? 'Saved' : 'Save'}</span>
+              </button>
+              <button className="btn btn-outline" onClick={() => shareListing(listing)}>Share</button>
+            </div>
+          </div>
+          <FeatureLine listing={listing} big />
+
+          <section className="panel">
+            <h2>About this property</h2>
+            <div className="prose">
+              <p className="lead">{listing.title}</p>
+              {String(listing.description || '').split(/\n{2,}/).map((para, i) => <p key={i} style={{ whiteSpace: 'pre-line' }}>{para}</p>)}
+            </div>
+          </section>
+
+          {listing.features?.length > 0 && (
+            <section className="panel">
+              <h2>Property features</h2>
+              <ul className="tick-list">{listing.features.map(f => <li key={f}>{f}</li>)}</ul>
+            </section>
+          )}
+
+          <section className="panel">
+            <h2>Inspection times</h2>
+            {slots.length ? (
+              <ul className="inspect-list">
+                {slots.map(s => (
+                  <li key={s.id}><span className="cal" aria-hidden="true" />{new Date(s.datetime).toLocaleString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}
+                    <Link className="link-arrow" style={{ marginLeft: 'auto' }} to={`/inspections/${listing.id}`}>Book</Link></li>
+                ))}
+              </ul>
+            ) : <p className="muted">No open homes scheduled. <Link to={`/inspections/${listing.id}`}>Request an inspection</Link> or message the owner.</p>}
+          </section>
+
+          {Number(listing.price) > 0 && (
+            <section className="panel">
+              <h2>Home loan repayments</h2>
+              <Repayments price={listing.price} />
+            </section>
+          )}
+
+          <section className="panel" id="comments">
+            <h2>Comments {comments.length > 0 && <span className="muted">({comments.length})</span>}</h2>
+            {comments.length ? <ul className="post-comments" style={{ margin: '0 0 12px' }}>{comments.map(c => <li key={c.id}><b>{c.name}</b> {c.body}</li>)}</ul> : <p className="muted">No comments yet.</p>}
+            <form className="msg-form" onSubmit={postComment}>
+              <input value={draft} onChange={e => setDraft(e.target.value)} placeholder="Add a comment…" aria-label="Add a comment" maxLength={300} />
+              <button className="btn btn-outline btn-sm" type="submit">Post</button>
+            </form>
+          </section>
+        </article>
+
+        <aside className="property-side">
+          <div className="contact-card">
+            <div className="owner">
+              <Avatar name={listing.seller_name} id={listing.user_id} className="" />
+              <div>
+                <strong>{listing.seller_name}</strong>
+                <span className="muted">Owner · selling privately</span>
+                <span className="muted" style={{ fontSize: 13 }}>
+                  {listing.seller_verified && '✓ Identity checked'}{listing.seller_verified && listing.solicitor_review_status === 'approved' && ' · '}
+                  {listing.solicitor_review_status === 'approved' && '✓ Solicitor reviewed'}
+                </span>
+              </div>
+            </div>
+
+            {isOwner ? (
+              <div className="offer-cta">
+                <p className="offer-status"><strong>This is your listing</strong><span className="muted">Manage offers and edits from My listings.</span></p>
+                <Link className="btn btn-primary btn-block" to="/my-listings">Go to My listings</Link>
+                <Link className="btn btn-outline btn-block" to="/offers?tab=selling">Offers on this home</Link>
+              </div>
+            ) : listing.status === 'active' ? (
+              <div className="offer-cta">
+                <button className="btn btn-primary btn-block btn-lg" onClick={openOffer}>Make an offer</button>
+                <p className="offer-sub muted">Price, deposit, settlement and conditions, straight to the owner.</p>
+              </div>
+            ) : (
+              <div className="offer-cta">
+                <p className="offer-status"><strong>{statusLabel(listing)}</strong><span className="muted">The owner has accepted an offer on this home.</span></p>
+              </div>
+            )}
+
+            {!isOwner && (sent ? (
+              <div className="sent">
+                <h2>Message sent</h2>
+                <p className="muted">The owner will reply in Houzeey. We&apos;ll show it under Messages.</p>
+                <Link className="btn btn-outline" to="/messages">Go to Messages</Link>
+              </div>
+            ) : isLoggedIn() ? (
+              <form onSubmit={sendMessage} noValidate>
+                <h2 className="contact-title">Message the owner</h2>
+                <fieldset className="checks">
+                  <legend>I&apos;d like to</legend>
+                  {['Inspect the property', 'Know more about the price', 'Get the contract of sale'].map(t => (
+                    <label key={t}><input type="checkbox" checked={topics.includes(t)} onChange={() => toggleTopic(t)} /> {t}</label>
+                  ))}
+                </fieldset>
+                <label className="field"><span>Message</span><textarea rows={4} value={message} onChange={e => setMessage(e.target.value)} placeholder="Hi, I'm interested in this home…" /></label>
+                {msgError && <p className="form-error" role="alert">{msgError}</p>}
+                <button className="btn btn-outline btn-block" type="submit" disabled={sending}>{sending ? 'Sending…' : 'Send message'}</button>
+                <p className="muted small-print">Messages stay inside Houzeey. Your email and phone aren&apos;t shared.</p>
+              </form>
+            ) : (
+              <div>
+                <h2 className="contact-title">Message the owner</h2>
+                <p className="muted">Join or sign in to message the owner. Your contact details stay private.</p>
+                <Link className="btn btn-outline btn-block" to="/login">Sign in</Link>
+              </div>
+            ))}
+          </div>
+        </aside>
+      </div>
+
+      {offerOpen && <OfferModal listing={listing} onClose={closeOffer} />}
     </div>
   )
 }

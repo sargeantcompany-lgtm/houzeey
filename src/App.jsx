@@ -28,7 +28,8 @@ import Terms from './pages/Terms'
 import Privacy from './pages/Privacy'
 import SolicitorReview from './pages/SolicitorReview'
 import Guides from './pages/Guides'
-import VideoFeed from './pages/VideoFeed'
+import Tours from './pages/Tours'
+import MyListings from './pages/MyListings'
 
 export default function App() {
   return (
@@ -37,7 +38,8 @@ export default function App() {
         <Route element={<Layout />}>
           {/* Public routes */}
           <Route path="/" element={<Home />} />
-          <Route path="/feed" element={<VideoFeed />} />
+          <Route path="/tours" element={<Tours />} />
+          <Route path="/feed" element={<Navigate to="/tours" replace />} />
           <Route path="/buy" element={<Listings mode="sale" />} />
           <Route path="/rent" element={<Navigate to="/buy" replace />} />
           <Route path="/listing/:id" element={<ListingDetail />} />
@@ -58,6 +60,7 @@ export default function App() {
           <Route path="/apply/:listingId" element={<Navigate to="/buy" replace />} />
           <Route path="/listing/:id/edit" element={<ProtectedRoute><EditListing /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route path="/my-listings" element={<ProtectedRoute><MyListings /></ProtectedRoute>} />
           <Route path="/saved" element={<ProtectedRoute><SavedListings /></ProtectedRoute>} />
           <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
           <Route path="/support" element={<Support />} />
