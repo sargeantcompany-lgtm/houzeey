@@ -7,21 +7,15 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview",
-    "build:app": "vite build --mode app",
-    "app:sync": "npm run build:app && npx cap sync"
+    "preview": "vite preview"
   },
   "dependencies": {
-    "@capacitor/android": "8.6.3",
-    "@capacitor/core": "8.6.3",
-    "@capacitor/ios": "8.6.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.13.1",
     "serve": "^14.2.8"
   },
   "devDependencies": {
-    "@capacitor/cli": "8.6.3",
     "@eslint/js": "^9.39.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",

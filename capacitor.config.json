@@ -1,7 +1,0 @@
-{
-  "appId": "com.houzeey.app",
-  "appName": "Houzeey",
-  "webDir": "dist",
-  "ios": { "contentInset": "never" },
-  "android": { "allowMixedContent": false }
-}

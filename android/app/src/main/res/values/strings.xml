@@ -1,7 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<resources>
-    <string name="app_name">Houzeey</string>
-    <string name="title_activity_main">Houzeey</string>
-    <string name="package_name">com.houzeey.app</string>
-    <string name="custom_url_scheme">com.houzeey.app</string>
-</resources>
