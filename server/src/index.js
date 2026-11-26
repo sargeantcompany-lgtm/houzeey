@@ -436,6 +436,8 @@ const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
   .split(',')
   .map(origin => origin.trim().replace(/\/$/, ''))
   .filter(Boolean)
+  // The iPhone and Android apps (Capacitor) load the site from these local origins.
+  .concat(['capacitor://localhost', 'https://localhost', 'http://localhost'])
 
 app.use(cors({
   origin: allowedOrigins.length === 1 ? allowedOrigins[0] : allowedOrigins,

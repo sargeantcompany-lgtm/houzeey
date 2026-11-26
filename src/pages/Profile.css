@@ -337,3 +337,10 @@
   .profile-grid { grid-template-columns: minmax(0, 1fr); }
   .profile-card { position: static; }
 }
+
+/* Delete account (required for the App Store) */
+.profile-page .pf-danger { margin-top: 24px; border-top: 1px solid rgba(220, 38, 38, 0.25); padding-top: 8px; }
+.profile-page .pf-danger h3 { color: #dc2626; }
+.profile-page .pf-danger-text { color: #6b7280; font-size: 0.9rem; margin: 0 0 12px; }
+.profile-page .btn-delete-account { background: #dc2626; color: #fff; border: 0; border-radius: 8px; padding: 12px 20px; font-weight: 700; cursor: pointer; }
+.profile-page .btn-delete-account:disabled { opacity: 0.6; cursor: default; }

@@ -61,6 +61,7 @@ export const api = {
     changePassword: (data) => post('/api/auth/change-password', data),
     forgotPassword: (email) => post('/api/auth/forgot-password', { email }),
     resetPassword: (token, password) => post('/api/auth/reset-password', { token, password }),
+    deleteAccount: (password) => request('/api/auth/account', { method: 'DELETE', body: JSON.stringify({ password }) }),
   },
 
   // Listings

@@ -226,4 +226,46 @@ router.post('/reset-password', async (req, res) => {
   }
 })
 
+// DELETE /api/auth/account — the signed-in user deletes their own account.
+// Needs the current password. Removes the user outright; if records that must be kept
+// (offers, settlements, payments) still point at them, their personal details are wiped,
+// their listings removed and the login disabled instead.
+router.delete('/account', requireAuth, async (req, res) => {
+  const { password } = req.body || {}
+  if (!password) return res.status(400).json({ error: 'Enter your password to delete your account' })
+  const client = await pool.connect()
+  try {
+    const found = await client.query('SELECT password_hash FROM users WHERE id = $1', [req.user.id])
+    if (found.rows.length === 0) return res.status(404).json({ error: 'Account not found' })
+    const valid = await bcrypt.compare(password, found.rows[0].password_hash)
+    if (!valid) return res.status(401).json({ error: 'Password is incorrect' })
+
+    await client.query('BEGIN')
+    await client.query('SAVEPOINT hard_delete')
+    try {
+      await client.query('DELETE FROM users WHERE id = $1', [req.user.id])
+    } catch (err) {
+      if (err.code !== '23503') throw err // only fall back when other records still reference the user
+      await client.query('ROLLBACK TO SAVEPOINT hard_delete')
+      await client.query(`DELETE FROM listings WHERE user_id = $1 AND status NOT IN ('under_offer', 'sold')`, [req.user.id])
+      await client.query(`UPDATE listings SET status = 'withdrawn' WHERE user_id = $1 AND status = 'under_offer'`, [req.user.id])
+      await client.query(`
+        UPDATE users SET
+          name = 'Deleted user',
+          email = 'deleted-' || id || '@deleted.houzeey.invalid',
+          password_hash = $2,
+          phone = NULL, bio = NULL, avatar_url = NULL, verified = FALSE, is_admin = FALSE
+        WHERE id = $1`, [req.user.id, '!deleted-' + crypto.randomBytes(16).toString('hex')])
+    }
+    await client.query('COMMIT')
+    res.json({ success: true })
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {})
+    console.error(err)
+    res.status(500).json({ error: 'Failed to delete account' })
+  } finally {
+    client.release()
+  }
+})
+
 export default router

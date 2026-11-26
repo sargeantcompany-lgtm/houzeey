@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { api } from '../api'
-import { getSession, refreshSession } from '../auth'
+import { getSession, refreshSession, logout } from '../auth'
 import './Profile.css'
 
 export default function Profile() {
@@ -14,6 +14,8 @@ export default function Profile() {
   const [avatarPreview, setAvatarPreview] = useState(null)
   const [avatarFile, setAvatarFile] = useState(null)
   const [msg, setMsg] = useState({ type: '', text: '' })
+  const [deletePassword, setDeletePassword] = useState('')
+  const [deleting, setDeleting] = useState(false)
   const [reviews, setReviews] = useState({ reviews: [], avg_rating: 0, count: 0 })
   const fileRef = useRef()
 
@@ -74,6 +76,20 @@ export default function Profile() {
       flash('error', err.message || 'Failed to change password')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handleDeleteAccount(e) {
+    e.preventDefault()
+    if (!window.confirm('Delete your Houzeey account? Your listings, saved homes and messages will be removed. This cannot be undone.')) return
+    setDeleting(true)
+    try {
+      await api.auth.deleteAccount(deletePassword)
+      logout()
+      window.location.assign('/')
+    } catch (err) {
+      flash('error', err.message || 'Failed to delete account')
+      setDeleting(false)
     }
   }
 
@@ -209,6 +225,22 @@ export default function Profile() {
                 </div>
                 <div className="pf-actions">
                   <button type="submit" className="btn-save-profile" disabled={saving}>{saving ? 'Updating…' : 'Update password'}</button>
+                </div>
+              </form>
+            )}
+
+            {tab === 'security' && (
+              <form className="profile-form pf-danger" onSubmit={handleDeleteAccount}>
+                <div className="pf-section">
+                  <h3>Delete account</h3>
+                  <p className="pf-danger-text">This permanently deletes your account, your listings, saved homes and messages. Records of offers or settlements already under way are kept without your personal details.</p>
+                  <label className="full">
+                    Enter your password to confirm
+                    <input type="password" value={deletePassword} onChange={e => setDeletePassword(e.target.value)} required autoComplete="current-password" />
+                  </label>
+                </div>
+                <div className="pf-actions">
+                  <button type="submit" className="btn-delete-account" disabled={deleting}>{deleting ? 'Deleting…' : 'Delete my account'}</button>
                 </div>
               </form>
             )}
