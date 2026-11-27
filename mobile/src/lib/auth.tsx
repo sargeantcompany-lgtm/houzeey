@@ -9,6 +9,7 @@ type AuthState = {
   register: (data: { name: string; email: string; password: string; role: 'buyer' | 'seller' }) => Promise<void>;
   logout: () => Promise<void>;
   deleteAccount: (password: string) => Promise<void>;
+  refreshUser: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -53,9 +54,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  // Reload the account (e.g. after an ID check is approved).
+  const refreshUser = useCallback(async () => {
+    try {
+      setUser(await api.auth.me());
+    } catch {
+      // keep the current state; the next request will surface any problem
+    }
+  }, []);
+
   const value = useMemo(
-    () => ({ user, ready, login, register, logout, deleteAccount }),
-    [user, ready, login, register, logout, deleteAccount],
+    () => ({ user, ready, login, register, logout, deleteAccount, refreshUser }),
+    [user, ready, login, register, logout, deleteAccount, refreshUser],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

@@ -14,6 +14,10 @@ export default function TabsLayout() {
         <NativeTabs.Trigger.Label>Tours</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf={{ default: 'play.rectangle', selected: 'play.rectangle.fill' }} md="smart_display" />
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="sell">
+        <NativeTabs.Trigger.Label>Sell</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf={{ default: 'plus.square', selected: 'plus.square.fill' }} md="add_box" />
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="saved">
         <NativeTabs.Trigger.Label>Saved</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf={{ default: 'bookmark', selected: 'bookmark.fill' }} md="bookmark" />

@@ -113,6 +113,13 @@ export type ListingDetail = Listing & {
 
 export type Comment = { id: string; body: string; name: string; created_at: string };
 
+export type MyListing = Listing & {
+  solicitor_review_status: 'pending' | 'approved' | 'rejected' | 'superseded' | null;
+  enquiries: string | number;
+};
+
+export type IdentityCheck = { status: 'pending' | 'approved' | 'rejected'; notes?: string | null };
+
 export const api = {
   auth: {
     login: (email: string, password: string) => post<{ token: string; user: User }>('/api/auth/login', { email, password }),
@@ -138,6 +145,18 @@ export const api = {
     list: () => get<Listing[]>('/api/saved'),
     save: (id: string) => post(`/api/saved/${id}`),
     unsave: (id: string) => del(`/api/saved/${id}`),
+  },
+  sell: {
+    create: (form: FormData) => post<{ id: string }>('/api/listings', form),
+    mine: () => get<MyListing[]>('/api/listings/my'),
+    videoUploadUrl: (listingId: string, contentType: string, fileSize: number) =>
+      post<{ videoId: string; uploadUrl: string; headers: Record<string, string> }>(
+        `/api/videos/listings/${listingId}/upload-url`, { contentType, fileSize }),
+    videoComplete: (videoId: string) => post(`/api/videos/${videoId}/complete`),
+  },
+  identity: {
+    me: () => get<IdentityCheck | null>('/api/identity/me'),
+    submit: (form: FormData) => post('/api/identity', form),
   },
   startConversation: (listingId: string, recipientId: string, message: string) =>
     post<{ conversation_id: string }>('/api/conversations', { listing_id: listingId, recipient_id: recipientId, message }),

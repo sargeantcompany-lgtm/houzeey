@@ -27,3 +27,4 @@ npx expo-doctor
 - Property page: photos/video, price, facts, features, seller, comments, save
 - Saved homes
 - Account: log in, create account, forgot password, log out, delete account
+- Sell: ID check (camera or photo library), list a property in 5 steps with photos and a video tour (recorded or chosen), sent to the solicitor for review, and a list of your listings with their status

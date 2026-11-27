@@ -15,6 +15,7 @@ export default function WebTabsLayout() {
     <Tabs screenOptions={{ headerShown: false, tabBarActiveTintColor: colors.brand, tabBarInactiveTintColor: colors.muted }}>
       <Tabs.Screen name="index" options={tab('Home', 'house')} />
       <Tabs.Screen name="tours" options={tab('Tours', 'play')} />
+      <Tabs.Screen name="sell" options={tab('Sell', 'house')} />
       <Tabs.Screen name="saved" options={tab('Saved', 'bookmark')} />
       <Tabs.Screen name="account" options={tab('Account', 'person')} />
     </Tabs>

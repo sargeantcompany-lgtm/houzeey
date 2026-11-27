@@ -28,6 +28,8 @@ function RootStack() {
       <Stack.Screen name="login" options={{ presentation: 'modal', title: 'Log in' }} />
       <Stack.Screen name="register" options={{ presentation: 'modal', title: 'Create account' }} />
       <Stack.Screen name="forgot-password" options={{ presentation: 'modal', title: 'Forgot password' }} />
+      <Stack.Screen name="verify-identity" options={{ presentation: 'modal', title: 'Verify identity' }} />
+      <Stack.Screen name="sell/new" options={{ presentation: 'fullScreenModal', title: 'List a property', gestureEnabled: false }} />
     </Stack>
   );
 }

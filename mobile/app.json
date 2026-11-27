@@ -39,7 +39,15 @@
         }
       ],
       "expo-secure-store",
-      "expo-video"
+      "expo-video",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Houzeey uses your photos so you can add pictures and video tours of your home, and a photo of your ID.",
+          "cameraPermission": "Houzeey uses the camera so you can photograph your home, film a video tour, and photograph your ID.",
+          "microphonePermission": "Houzeey uses the microphone to record sound in your home video tour."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
