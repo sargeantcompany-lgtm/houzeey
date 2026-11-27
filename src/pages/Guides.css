@@ -210,3 +210,7 @@
     position: static;
   }
 }
+
+/* Illustrated header for each guide section */
+.guide-art.guide-art-figure { overflow: hidden; background: #173b49; }
+.guide-art-figure .guide-art-svg { display: block; width: 100%; height: 100%; }
