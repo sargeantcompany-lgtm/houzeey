@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import GuideArt from './GuideArt'
 
 const GUIDES = [
   { id: 'price', title: 'Setting the right asking price', read: '5 min read', hue: 12, body: [
@@ -51,7 +52,7 @@ export default function Guides() {
         <div className="guide-articles">
           {GUIDES.map(g => (
             <article key={g.id} className="guide-article" id={g.id}>
-              <div className="guide-art" style={{ '--h': g.hue }} aria-hidden="true" />
+              <div className="guide-art guide-art-figure"><GuideArt id={g.id} /></div>
               <span className="muted">{g.read}</span>
               <h2>{g.title}</h2>
               {g.body.map((p, i) => <p key={i}>{p}</p>)}
